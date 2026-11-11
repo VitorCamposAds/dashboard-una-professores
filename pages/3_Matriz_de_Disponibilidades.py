@@ -40,10 +40,11 @@ df_disp_filtrado = df_disp[
     df_disp['Dia'].astype(str).isin(dia_selecionado)
 ]
 
-c1, c2, c3 = st.columns(3)
-c1.metric("📌 Total de Horários Disponíveis", len(df_disp_filtrado))
+c1, c2, c3, c4 = st.columns(4)
+c1.metric("📌 Total de Horários", len(df_disp_filtrado))
 c2.metric("🏫 Unidades na Seleção", df_disp_filtrado['Unidade'].nunique())
 c3.metric("👨‍🏫 Professores Envolvidos", df_disp_filtrado['Professor'].nunique())
+c4.metric("⚡ Média Disp/Professor", f"{len(df_disp_filtrado) / max(df_disp_filtrado['Professor'].nunique(), 1):.1f}")
 
 st.markdown("##")
 col1, col2 = st.columns(2)
@@ -89,13 +90,21 @@ if 'Unidade' in df_disp_filtrado.columns and 'Dia' in df_disp_filtrado.columns:
     fig_heat.update_layout(plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)')
     st.plotly_chart(fig_heat, use_container_width=True)
 
+# ---- NOVA ANÁLISE EXECUTIVA DE DISPONIBILIDADE (Sem repetir gráficos) ----
+st.markdown("---")
+st.subheader("💡 Indicadores de Otimização de Turnos")
+col_dsp1, col_dsp2, col_dsp3 = st.columns(3)
+col_dsp1.metric("🕒 Densidade Horária Média", f"{len(df_disp_filtrado) / max(df_disp_filtrado['Unidade'].nunique(), 1):.1f}", delta="Por Unidade")
+col_dsp2.metric("📅 Turnos / Janelas Registradas", df_disp_filtrado['Dia'].nunique(), delta="Dias Úteis Ativos")
+col_dsp3.metric("📊 Taxa de Aproveitamento Docente", f"{(df_disp_filtrado['Professor'].nunique() / max(len(df_prof), 1))*100:.1f}%", delta="Base Atendida")
+# --------------------------------------------------------------------------
+
 st.markdown("---")
 st.subheader("📋 Registros Detalhados de Disponibilidades")
 
-# Campo de busca interativo na tabela
-busca_disp = st.text_input("🔍 Buscar por Professor ou Unidade:", key="busca_p3")
+busca_disp = st.text_input("🔍 Buscar por Professor ou Unidade:", key="busca_p3", placeholder="Digite para filtrar...")
 df_tabela_disp = df_disp_filtrado.copy()
-if busca_disp:
+if busca_disp and busca_disp.strip() != "":
     mask = df_tabela_disp.astype(str).apply(lambda x: x.str.contains(busca_disp, case=False, na=False)).any(axis=1)
     df_tabela_disp = df_tabela_disp[mask]
 
