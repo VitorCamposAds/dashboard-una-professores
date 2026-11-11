@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 
-st.set_page_config(page_title="Aderências & Cursos | UNA", page_icon="📚", layout="wide")
+st.set_page_config(page_title="Visão Geral & RH | UNA", page_icon="📊", layout="wide")
 
 st.markdown("""
     <style>
@@ -11,8 +11,8 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-st.title("📚 Módulo de Aderências & Alocação Curricular")
-st.markdown("Análise profunda de cursos, grandes áreas de conhecimento e o ranking das disciplinas com maior demanda.")
+st.title("📊 Visão Geral: Corpo Docente & Indicadores de RH")
+st.markdown("Monitoramento integrado do quadro de professores, titulações acadêmicas, tempo de casa e profundidade de formação.")
 st.markdown("---")
 
 @st.cache_data
@@ -28,65 +28,54 @@ def carregar_dados():
 
 df_rh, df_ader, df_prof, df_disp = carregar_dados()
 
-st.sidebar.header("🎛️ Filtros de Aderência")
-areas_disponiveis = sorted([str(x) for x in df_ader['Area'].dropna().unique()])
-area_selecionada = st.sidebar.multiselect("Filtrar por Área:", areas_disponiveis, default=areas_disponiveis, key="area_p2")
-df_ader_filtrado = df_ader[df_ader['Area'].astype(str).isin(area_selecionada)]
+st.sidebar.header("🎛️ Filtros do Sistema")
+titulacoes_disponiveis = sorted([str(x) for x in df_prof['Titulacao'].dropna().unique()])
+titulacao_selecionada = st.sidebar.multiselect("Filtrar por Titulação:", titulacoes_disponiveis, default=titulacoes_disponiveis, key="tit_p1")
+df_prof_filtrado = df_prof[df_prof['Titulacao'].astype(str).isin(titulacao_selecionada)]
 
-c1, c2, c3 = st.columns(3)
-c1.metric("📚 Total de Aderências", len(df_ader_filtrado))
-c2.metric("🏛️ Cursos Envolvidos", df_ader_filtrado['Curso'].nunique())
-c3.metric("📖 Disciplinas Vinculadas", df_ader_filtrado['Disciplina'].nunique())
+c1, c2, c3, c4 = st.columns(4)
+c1.metric("👨‍🏫 Total Professores Únicos", len(df_prof_filtrado), delta="Base Sincronizada")
+c2.metric("🎓 Mestres e Doutores", len(df_prof_filtrado[df_prof_filtrado['Titulacao'].isin(['Mestrado', 'Doutorado', 'Pós-Doutorado'])]))
+c3.metric("📚 Aderências Ativas", len(df_ader))
+c4.metric("🏢 Colaboradores Base RH", len(df_rh))
 
 st.markdown("##")
+col1, col2 = st.columns(2)
 
-st.subheader("🏛️ Top 10 Cursos com Mais Aderências")
-df_cursos = df_ader_filtrado['Curso'].value_counts().reset_index().head(10)
-df_cursos.columns = ['Curso', 'Total']
-fig_cursos = px.bar(df_cursos, x='Total', y='Curso', orientation='h', text='Total', color='Total', color_continuous_scale=['#8B0000', '#C8102E'])
-fig_cursos.update_layout(yaxis={'categoryorder':'total ascending'}, plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', margin=dict(l=200, r=20, t=30, b=30))
-st.plotly_chart(fig_cursos, use_container_width=True)
+with col1:
+    st.subheader("🎓 Distribuição por Titulação Acadêmica")
+    df_tit = df_prof_filtrado['Titulacao'].value_counts().reset_index()
+    df_tit.columns = ['Titulacao', 'Total']
+    fig_tit = px.bar(df_tit, x='Total', y='Titulacao', orientation='h', text='Total', color='Total', color_continuous_scale=['#8B0000', '#C8102E', '#FF4D4D'])
+    fig_tit.update_layout(yaxis={'categoryorder':'total ascending'}, plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)')
+    st.plotly_chart(fig_tit, use_container_width=True)
 
-st.markdown("---")
-
-st.subheader("🌐 Distribuição por Grande Área de Conhecimento")
-df_areas = df_ader_filtrado['Area'].value_counts().reset_index()
-df_areas.columns = ['Area', 'Total']
-
-fig_areas = px.bar(df_areas, x='Total', y='Area', orientation='h', text='Total', color='Total', color_continuous_scale=['#B22222', '#DC143C'])
-fig_areas.update_layout(
-    yaxis={'categoryorder':'total ascending'}, 
-    plot_bgcolor='rgba(0,0,0,0)', 
-    paper_bgcolor='rgba(0,0,0,0)',
-    margin=dict(l=380, r=40, t=30, b=30),
-    height=450
-)
-st.plotly_chart(fig_areas, use_container_width=True)
+with col2:
+    st.subheader("📋 Top Formações Acadêmicas")
+    df_form = df_prof_filtrado['Formacao'].value_counts().reset_index().head(10)
+    df_form.columns = ['Formacao', 'Total']
+    fig_form = px.bar(df_form, x='Total', y='Formacao', orientation='h', text='Total', color='Total', color_continuous_scale=['#B22222', '#DC143C'])
+    fig_form.update_layout(yaxis={'categoryorder':'total ascending'}, plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)')
+    st.plotly_chart(fig_form, use_container_width=True)
 
 st.markdown("---")
-
-st.subheader("📖 Top 10 Disciplinas com Maior Volume de Aderências")
-if 'Disciplina' in df_ader_filtrado.columns:
-    df_disc = df_ader_filtrado['Disciplina'].value_counts().reset_index().head(10)
-    df_disc.columns = ['Disciplina', 'Total']
-    fig_disc = px.bar(df_disc, x='Total', y='Disciplina', orientation='h', text='Total', color='Total', color_continuous_scale=['#900B1F', '#C8102E'])
-    fig_disc.update_layout(
-        yaxis={'categoryorder':'total ascending'}, 
-        plot_bgcolor='rgba(0,0,0,0)', 
-        paper_bgcolor='rgba(0,0,0,0)',
-        margin=dict(l=280, r=20, t=30, b=30),
-        height=450
-    )
-    st.plotly_chart(fig_disc, use_container_width=True)
+st.subheader("🔬 Análise Avançada: Cruzamento de Titulação vs Principais Formações")
+if 'Titulacao' in df_prof_filtrado.columns and 'Formacao' in df_prof_filtrado.columns:
+    df_cruz_rh = df_prof_filtrado.groupby(['Formacao', 'Titulacao']).size().reset_index(name='Total')
+    top_formacoes = df_prof_filtrado['Formacao'].value_counts().head(8).index
+    df_cruz_rh_top = df_cruz_rh[df_cruz_rh['Formacao'].isin(top_formacoes)]
+    
+    fig_cruz_rh = px.bar(df_cruz_rh_top, x='Total', y='Formacao', color='Titulacao', orientation='h', barmode='stack', color_discrete_sequence=['#C8102E', '#E63946', '#FF6B6B', '#5C0601'])
+    fig_cruz_rh.update_layout(plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', margin=dict(l=200, r=20, t=30, b=30))
+    st.plotly_chart(fig_cruz_rh, use_container_width=True)
 
 st.markdown("---")
-st.subheader("📋 Registros Detalhados de Aderências")
+st.subheader("📋 Detalhamento do Corpo Docente")
 
-# Campo de busca interativo na tabela
-busca_ader = st.text_input("🔍 Buscar por Curso, Disciplina ou Professor:", key="busca_p2")
-df_tabela_ader = df_ader_filtrado.copy()
-if busca_ader:
-    mask = df_tabela_ader.astype(str).apply(lambda x: x.str.contains(busca_ader, case=False, na=False)).any(axis=1)
-    df_tabela_ader = df_tabela_ader[mask]
+busca_prof = st.text_input("🔍 Buscar professor por Nome ou Matrícula:", key="busca_p1", placeholder="Digite para filtrar ou apague para ver tudo...")
+df_tabela_prof = df_prof_filtrado.copy()
+if busca_prof and busca_prof.strip() != "":
+    mask = df_tabela_prof.astype(str).apply(lambda x: x.str.contains(busca_prof, case=False, na=False)).any(axis=1)
+    df_tabela_prof = df_tabela_prof[mask]
 
-st.dataframe(df_tabela_ader, use_container_width=True, hide_index=True)
+st.dataframe(df_tabela_prof[['Matricula', 'Nome', 'Formacao', 'Titulacao', 'CurriculoLattes']], use_container_width=True, hide_index=True)
