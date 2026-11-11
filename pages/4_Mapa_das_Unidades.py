@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import pydeck as pdk
+from rapidfuzz import process, fuzz
 
 st.set_page_config(page_title="Mapa das Unidades | UNA", page_icon="🗺️", layout="wide")
 
@@ -28,7 +29,7 @@ def carregar_dados():
 
 df_rh, df_ader, df_prof, df_disp = carregar_dados()
 
-# Dicionário com todas as unidades oficiais da rede (mapeando exatamente pelos nomes que vêm na planilha)
+# Dicionário oficial com as unidades físicas da rede
 coordenadas_unidades = {
     'Aimorés': {'lat': -19.9245, 'lon': -43.9450, 'estado': 'MG'},
     'Liberdade': {'lat': -19.9281, 'lon': -43.9383, 'estado': 'MG'},
@@ -55,51 +56,58 @@ coordenadas_unidades = {
     'Rio Verde': {'lat': -17.7944, 'lon': -50.9192, 'estado': 'GO'}
 }
 
-# Função auxiliar para limpar e padronizar o nome da unidade (removendo "UNA -", espaços e acentos se necessário)
-def limpar_nome_unidade(nome):
+# Cria a lista de nomes oficiais para o Fuzzy Matching
+lista_nomes_oficiais = list(coordenadas_unidades.keys())
+
+def limpar_e_mapear_unidade(nome):
     if pd.isna(nome):
-        return ""
+        return "Desconhecido"
     s = str(nome).strip()
-    # Remove o prefixo "UNA -" case insensitive
     if s.lower().startswith("una -"):
         s = s[5:].strip()
+    
+    # Usa rapidfuzz para encontrar a correspondência exata ou aproximada na lista oficial (ex: Uberlandia -> Uberlândia)
+    match, score, _ = process.extractOne(s, lista_nomes_oficiais, scorer=fuzz.WRatio)
+    if score >= 70:  # Se houver boa similaridade, usa o nome oficial padronizado
+        return match
     return s
 
-# Cria o DataFrame base com as unidades oficiais limpas
-df_base_unidades = pd.DataFrame([
-    {'Unidade_Original': k, 'Unidade_Key': k.strip().lower(), 'lat': v['lat'], 'lon': v['lon'], 'Estado': v['estado']} 
-    for k, v in coordenadas_unidades.items()
-])
-
 if 'Unidade' in df_disp.columns:
-    # Filtra fora EAD / Digital
     df_disp_presencial = df_disp[
         ~df_disp['Unidade'].astype(str).str.contains("digital|ead|virtual|online", case=False, na=False)
     ].copy()
 
-    # Aplica a limpeza no nome da unidade que vem da planilha
-    df_disp_presencial['Unidade_Limpa'] = df_disp_presencial['Unidade'].apply(limpar_nome_unidade)
-    df_disp_presencial['Unidade_Key'] = df_disp_presencial['Unidade_Limpa'].str.lower()
+    # Aplica o fuzzy matching inteligente em cada linha da planilha de disponibilidades
+    df_disp_presencial['Unidade_Padronizada'] = df_disp_presencial['Unidade'].apply(limpar_e_mapear_unidade)
 
-    df_agrupado = df_disp_presencial.groupby('Unidade_Key').agg(
+    # Agrupa com base nos nomes oficiais limpos
+    df_agrupado = df_disp_presencial.groupby('Unidade_Padronizada').agg(
         Total_Disponibilidades=('Professor', 'count'),
         Professores_Unicos=('Professor', 'nunique')
-    ).reset_index()
-
-    # Faz o merge com a base oficial
-    df_map_resumo = pd.merge(df_base_unidades, df_agrupado, on='Unidade_Key', how='left')
-    
-    # Mantém o nome amigável para exibição com o prefixo UNA - se o usuário preferir, ou usa o original
-    df_map_resumo['Unidade'] = "UNA - " + df_map_resumo['Unidade_Original']
-    df_map_resumo['Total_Disponibilidades'] = df_map_resumo['Total_Disponibilidades'].fillna(0).astype(int)
-    df_map_resumo['Professores_Unicos'] = df_map_resumo['Professores_Unicos'].fillna(0).astype(int)
+    ).reset_index().rename(columns={'Unidade_Padronizada': 'Unidade_Oficial'})
 else:
-    df_map_resumo = df_base_unidades.copy()
-    df_map_resumo['Unidade'] = "UNA - " + df_map_resumo['Unidade_Original']
-    df_map_resumo['Total_Disponibilidades'] = 0
-    df_map_resumo['Professores_Unicos'] = 0
+    df_agrupado = pd.DataFrame(columns=['Unidade_Oficial', 'Total_Disponibilidades', 'Professores_Unicos'])
 
-# Métricas Executivas atualizadas para refletir o total exato de unidades cadastradas
+# Monta o DataFrame final garantindo que todas as unidades oficiais constem na tela
+dados_finais = []
+for nome, info in coordenadas_unidades.items():
+    row_dados = df_agrupado[df_agrupado['Unidade_Oficial'].str.lower() == nome.lower()]
+    total_disp = int(row_dados['Total_Disponibilidades'].values[0]) if not row_dados.empty else 0
+    prof_unicos = int(row_dados['Professores_Unicos'].values[0]) if not row_dados.empty else 0
+    
+    dados_finais.append({
+        'Unidade': f"UNA - {nome}",
+        'Unidade_Pura': nome,
+        'lat': info['lat'],
+        'lon': info['lon'],
+        'Estado': info['estado'],
+        'Total_Disponibilidades': total_disp,
+        'Professores_Unicos': prof_unicos
+    })
+
+df_map_resumo = pd.DataFrame(dados_finais)
+
+# Métricas Executivas
 c1, c2, c3 = st.columns(3)
 c1.metric("🏫 Campi Presenciais Mapeados", len(df_map_resumo))
 c2.metric("📌 Total de Vagas nos Polos Físicos", int(df_map_resumo['Total_Disponibilidades'].sum()))
