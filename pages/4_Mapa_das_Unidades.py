@@ -28,9 +28,8 @@ def carregar_dados():
 
 df_rh, df_ader, df_prof, df_disp = carregar_dados()
 
-# Dicionário completo com as 17 unidades presenciais reais mapeadas (MG e GO)
+# Dicionário mestre com todas as unidades oficiais físicas (MG e GO)
 coordenadas_unidades = {
-    # Belo Horizonte e Região Metropolitana (MG)
     'Aimorés': {'lat': -19.9245, 'lon': -43.9450, 'estado': 'MG'},
     'Liberdade': {'lat': -19.9281, 'lon': -43.9383, 'estado': 'MG'},
     'Centro': {'lat': -19.9213, 'lon': -43.9388, 'estado': 'MG'},
@@ -41,44 +40,44 @@ coordenadas_unidades = {
     'Buritis': {'lat': -19.9482, 'lon': -43.9654, 'estado': 'MG'},
     'Horto': {'lat': -19.9102, 'lon': -43.9180, 'estado': 'MG'},
     'Justinópolis': {'lat': -19.7891, 'lon': -44.0753, 'estado': 'MG'},
-    
-    # Interior de Minas Gerais (MG)
     'Sete Lagoas': {'lat': -19.4627, 'lon': -44.2486, 'estado': 'MG'},
     'Cataguases': {'lat': -21.3886, 'lon': -42.6978, 'estado': 'MG'},
     'Pouso Alegre': {'lat': -22.2300, 'lon': -45.9356, 'estado': 'MG'},
     'Uberlândia': {'lat': -18.9186, 'lon': -48.2772, 'estado': 'MG'},
     'Uberaba': {'lat': -19.7475, 'lon': -47.9317, 'estado': 'MG'},
-    
-    # Estado de Goiás (GO)
     'Goiânia': {'lat': -16.6864, 'lon': -49.2643, 'estado': 'GO'},
     'Jataí': {'lat': -17.8814, 'lon': -51.7144, 'estado': 'GO'},
     'Itumbiara': {'lat': -18.4219, 'lon': -49.2153, 'estado': 'GO'},
     'Rio Verde': {'lat': -17.7944, 'lon': -50.9192, 'estado': 'GO'}
 }
 
+# Cria um DataFrame oficial com base nas unidades mapeadas acima para garantir que todas apareçam
+df_base_unidades = pd.DataFrame([
+    {'Unidade': k, 'lat': v['lat'], 'lon': v['lon'], 'Estado': v['estado']} 
+    for k, v in coordenadas_unidades.items()
+])
+
 if 'Unidade' in df_disp.columns:
     df_disp_presencial = df_disp[
         ~df_disp['Unidade'].astype(str).str.contains("digital|ead|virtual|online", case=False, na=False)
     ].copy()
 
-    df_map_resumo = df_disp_presencial.groupby('Unidade').agg(
+    # Agrupa os dados reais da planilha
+    df_agrupado = df_disp_presencial.groupby('Unidade').agg(
         Total_Disponibilidades=('Professor', 'count'),
         Professores_Unicos=('Professor', 'nunique')
     ).reset_index()
 
-    def buscar_coord(unidade_str, tipo):
-        for k, v in coordenadas_unidades.items():
-            if k.lower() in str(unidade_str).lower():
-                return v[tipo]
-        return None
-
-    df_map_resumo['lat'] = df_map_resumo['Unidade'].apply(lambda x: buscar_coord(x, 'lat'))
-    df_map_resumo['lon'] = df_map_resumo['Unidade'].apply(lambda x: buscar_coord(x, 'lon'))
-    df_map_resumo['Estado'] = df_map_resumo['Unidade'].apply(lambda x: buscar_coord(x, 'estado') or 'Outros')
-
-    df_map_resumo = df_map_resumo.dropna(subset=['lat', 'lon'])
+    # Faz o merge à esquerda com a base oficial de unidades para forçar a exibição de todas
+    df_map_resumo = pd.merge(df_base_unidades, df_agrupado, on='Unidade', how='left')
+    
+    # Preenche com 0 os campi que não possuem lançamentos na planilha de disponibilidades
+    df_map_resumo['Total_Disponibilidades'] = df_map_resumo['Total_Disponibilidades'].fillna(0).astype(int)
+    df_map_resumo['Professores_Unicos'] = df_map_resumo['Professores_Unicos'].fillna(0).astype(int)
 else:
-    df_map_resumo = pd.DataFrame(columns=['Unidade', 'Total_Disponibilidades', 'Professores_Unicos', 'lat', 'lon', 'Estado'])
+    df_map_resumo = df_base_unidades.copy()
+    df_map_resumo['Total_Disponibilidades'] = 0
+    df_map_resumo['Professores_Unicos'] = 0
 
 c1, c2, c3 = st.columns(3)
 c1.metric("🏫 Campi Presenciais Mapeados", len(df_map_resumo))
@@ -96,9 +95,10 @@ if busca_mapa and busca_mapa.strip() != "":
 if not df_tabela_mapa.empty:
     st.subheader("📍 Mapa Interativo dos Campi (Passe o mouse para ver os dados)")
     
-    # Bolinhas bem discretas e proporcionais
-    max_val = df_tabela_mapa['Total_Disponibilidades'].max() if not df_tabela_mapa.empty else 1
-    df_tabela_mapa['radius'] = df_tabela_mapa['Total_Disponibilidades'].apply(lambda x: int((x / max_val) * 2500 + 1000))
+    # Bolinhas discretas e proporcionais
+    max_val = df_tabela_mapa['Total_Disponibilidades'].max()
+    max_val = max_val if max_val > 0 else 1
+    df_tabela_mapa['radius'] = df_tabela_mapa['Total_Disponibilidades'].apply(lambda x: int((x / max_val) * 2500 + 1000) if x > 0 else 800)
 
     layer = pdk.Layer(
         "ScatterplotLayer",
