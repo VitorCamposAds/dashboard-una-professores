@@ -33,14 +33,14 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Bloco unificado com fundo #DE0309 e centralizado
-col_l, col_c, col_r = st.columns([1, 2, 1])
+# Bloco unificado: Logo centralizada e textos dentro da mesma caixa vermelha #DE0309
+col_l, col_c, col_r = st.columns([1, 1.2, 1])
 with col_c:
     st.image("logo_una.png", use_container_width=True)
 
 st.markdown("""
     <div class="hero-box">
-        <h1 style="color: #ffffff !important; font-size: 2.3rem; margin-top: 10px; margin-bottom: 10px;">Hub de Gestão de Corpo Docente & Aderências</h1>
+        <h1 style="color: #ffffff !important; font-size: 2.3rem; margin-top: 5px; margin-bottom: 10px;">Hub de Gestão de Corpo Docente & Aderências</h1>
         <h3 style="color: #ffe6e6 !important; font-weight: 400; margin-bottom: 20px;">65 Anos Mudando Mundos • Inteligência Acadêmica & RH</h3>
         <p style="font-size: 1.1rem; color: #ffffff !important; max-width: 900px; margin: 0 auto; line-height: 1.5;">
             Plataforma executiva de alta precisão para monitoramento do corpo docente, cruzamentos oficiais com a base de Recursos Humanos, gestão avançada de titulações, aderências curriculares e otimização de disponibilidades horárias por unidade.
