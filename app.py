@@ -9,7 +9,9 @@ st.set_page_config(
 
 st.markdown("""
     <style>
-        .main { background-color: #fcfcfc; }
+        .stApp { background-color: #f4f6f9; }
+        .main { background-color: #f4f6f9; }
+        
         .hero-banner {
             background: linear-gradient(135deg, #C8102E 0%, #900B1F 100%);
             padding: 45px;
@@ -35,7 +37,7 @@ st.markdown("""
         <h1 style="color: white; font-size: 2.5rem; margin-bottom: 10px;">🎓 Hub de Gestão de Corpo Docente & Aderências</h1>
         <h3 style="color: #ffcccc; font-weight: 400; margin-bottom: 20px;">65 Anos Mudando Mundos • Inteligência Acadêmica & RH</h3>
         <p style="font-size: 1.1rem; color: #f8d7da; max-width: 900px; line-height: 1.5;">
-            Plataforma executiva de alta precisão para monitoramento do corpo docente, cruzamentos oficiais com a base de Recursos Humanos, gestão de titulações, aderências curriculares e otimização de disponibilidades horárias por unidade.
+            Plataforma executiva de alta precisão para monitoramento do corpo docente, cruzamentos oficiais com a base de Recursos Humanos, gestão avançada de titulações, aderências curriculares e otimização de disponibilidades horárias por unidade.
         </p>
     </div>
 """, unsafe_allow_html=True)
@@ -49,7 +51,7 @@ with c1:
         <div class="card-exec">
             <h3>🎛️ 1. Filtros Globais Dinâmicos</h3>
             <p style="color: #64748b; font-size: 0.95rem;">
-                Utilize a barra lateral para segmentar os dados por <b>Unidade</b>, <b>Titulação</b> ou <b>Vínculo</b>. Os filtros se aplicam simultaneamente a todas as páginas do sistema.
+                Utilize a barra lateral para segmentar os dados por <b>Unidade</b>, <b>Titulação</b> ou <b>Área</b>. Os filtros adaptam instantaneamente os indicadores e gráficos.
             </p>
         </div>
     """, unsafe_allow_html=True)
@@ -57,9 +59,9 @@ with c1:
 with c2:
     st.markdown("""
         <div class="card-exec">
-            <h3>📊 2. Módulos de Análise</h3>
+            <h3>📊 2. Módulos Aprofundados</h3>
             <p style="color: #64748b; font-size: 0.95rem;">
-                Navegue pelas abas do menu lateral esquerdo: <b>Visão Geral RH</b>, <b>Aderências e Cursos</b> e <b>Matriz de Disponibilidades</b>.
+                Explore as novas abas analíticas: <b>Visão Geral & RH</b>, <b>Aderências, Cursos & Disciplinas</b> e <b>Matriz de Disponibilidades & Turnos</b>.
             </p>
         </div>
     """, unsafe_allow_html=True)
@@ -69,10 +71,10 @@ with c3:
         <div class="card-exec">
             <h3>🔒 3. Governança e Compliance</h3>
             <p style="color: #64748b; font-size: 0.95rem;">
-                Base reconciliada por algoritmos de similaridade semântica contra o cadastro oficial de colaboradores, garantindo unicidade de matrículas e histórico íntegro.
+                Base reconciliada por inteligência semântica contra o cadastro oficial corporativo, garantindo unicidade de matrículas e auditoria completa.
             </p>
         </div>
     """, unsafe_allow_html=True)
 
 st.markdown("---")
-st.success("✨ **Pronto para começar?** Selecione uma das páginas no menu lateral esquerdo para explorar os painéis analíticos.")
+st.success("✨ **Pronto para começar?** Selecione uma das páginas no menu lateral esquerdo para explorar os painéis analíticos avançados.")
