@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 
-st.set_page_config(page_title="Disponibilidades | UNA", page_icon="🕒", layout="wide")
+st.set_page_config(page_title="Aderências & Cursos | UNA", page_icon="📚", layout="wide")
 
 st.markdown("""
     <style>
@@ -11,8 +11,8 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-st.title("🕒 Matriz de Disponibilidades & Otimização de Turnos")
-st.markdown("Cruzamento avançado de horários, dias da semana, distribuição espacial por unidade acadêmica e gargalos de alocação.")
+st.title("📚 Módulo de Aderências & Alocação Curricular")
+st.markdown("Análise profunda de cursos, grandes áreas de conhecimento e o ranking das disciplinas com maior demanda.")
 st.markdown("---")
 
 @st.cache_data
@@ -28,75 +28,74 @@ def carregar_dados():
 
 df_rh, df_ader, df_prof, df_disp = carregar_dados()
 
-st.sidebar.header("🎛️ Filtros de Disponibilidade")
-unidades_disponiveis = sorted([str(x) for x in df_disp['Unidade'].dropna().unique()])
-unidade_selecionada = st.sidebar.multiselect("Filtrar por Unidade(s):", unidades_disponiveis, default=unidades_disponiveis, key="uni_p3")
+st.sidebar.header("🎛️ Filtros de Aderência")
+areas_disponiveis = sorted([str(x) for x in df_ader['Area'].dropna().unique()])
+area_selecionada = st.sidebar.multiselect("Filtrar por Área:", areas_disponiveis, default=areas_disponiveis, key="area_p2")
+df_ader_filtrado = df_ader[df_ader['Area'].astype(str).isin(area_selecionada)]
 
-dias_disponiveis = sorted([str(x) for x in df_disp['Dia'].dropna().unique()])
-dia_selecionado = st.sidebar.multiselect("Filtrar por Dia:", dias_disponiveis, default=dias_disponiveis, key="dia_p3")
-
-df_disp_filtrado = df_disp[
-    df_disp['Unidade'].astype(str).isin(unidade_selecionada) & 
-    df_disp['Dia'].astype(str).isin(dia_selecionado)
-]
-
-c1, c2, c3 = st.columns(3)
-c1.metric("📌 Total de Horários Disponíveis", len(df_disp_filtrado))
-c2.metric("🏫 Unidades na Seleção", df_disp_filtrado['Unidade'].nunique())
-c3.metric("👨‍🏫 Professores Envolvidos", df_disp_filtrado['Professor'].nunique())
+c1, c2, c3, c4 = st.columns(4)
+c1.metric("📚 Total de Aderências", len(df_ader_filtrado))
+c2.metric("🏛️ Cursos Envolvidos", df_ader_filtrado['Curso'].nunique())
+c3.metric("📖 Disciplinas Vinculadas", df_ader_filtrado['Disciplina'].nunique())
+c4.metric("📊 Média Aderências/Curso", f"{len(df_ader_filtrado) / max(df_ader_filtrado['Curso'].nunique(), 1):.1f}")
 
 st.markdown("##")
-col1, col2 = st.columns(2)
 
-with col1:
-    st.subheader("📍 Volume de Disponibilidades por Unidade")
-    df_uni = df_disp_filtrado['Unidade'].value_counts().reset_index()
-    df_uni.columns = ['Unidade', 'Total']
-    fig_uni = px.bar(df_uni, x='Total', y='Unidade', orientation='h', text='Total', color='Total', color_continuous_scale=['#8B0000', '#C8102E'])
-    fig_uni.update_layout(yaxis={'categoryorder':'total ascending'}, plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)')
-    st.plotly_chart(fig_uni, use_container_width=True)
-
-with col2:
-    st.subheader("📅 Disponibilidade por Dia da Semana")
-    dias_ordem = ['SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB']
-    fig_dias = px.histogram(df_disp_filtrado, x='Dia', category_orders={'Dia': dias_ordem}, color='Dia', color_discrete_sequence=['#C8102E', '#E63946', '#FF6B6B', '#D90429', '#8D0801', '#5C0601'])
-    fig_dias.update_layout(plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)')
-    st.plotly_chart(fig_dias, use_container_width=True)
-
-col3, col4 = st.columns(2)
-
-with col3:
-    st.subheader("⏰ Distribuição por Turno / Horário")
-    if 'Horario' in df_disp_filtrado.columns:
-        fig_horario = px.pie(df_disp_filtrado, names='Horario', hole=0.5, color_discrete_sequence=['#C8102E', '#FF4D4D', '#A30000'])
-        fig_horario.update_layout(plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)')
-        st.plotly_chart(fig_horario, use_container_width=True)
-
-with col4:
-    st.subheader("📊 Cruzamento Unidade x Período (Stack)")
-    if 'Horario' in df_disp_filtrado.columns and 'Unidade' in df_disp_filtrado.columns:
-        df_cruz = df_disp_filtrado.groupby(['Unidade', 'Horario']).size().reset_index(name='Total')
-        fig_cruz = px.bar(df_cruz, x='Unidade', y='Total', color='Horario', barmode='stack', color_discrete_sequence=['#C8102E', '#FF6B6B', '#5C0601'])
-        fig_cruz.update_layout(xaxis_tickangle=-45, plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)')
-        st.plotly_chart(fig_cruz, use_container_width=True)
+st.subheader("🏛️ Top 10 Cursos com Mais Aderências")
+df_cursos = df_ader_filtrado['Curso'].value_counts().reset_index().head(10)
+df_cursos.columns = ['Curso', 'Total']
+fig_cursos = px.bar(df_cursos, x='Total', y='Curso', orientation='h', text='Total', color='Total', color_continuous_scale=['#8B0000', '#C8102E'])
+fig_cursos.update_layout(yaxis={'categoryorder':'total ascending'}, plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', margin=dict(l=200, r=20, t=30, b=30))
+st.plotly_chart(fig_cursos, use_container_width=True)
 
 st.markdown("---")
 
-st.subheader("🔥 Matriz de Calor: Intensidade de Horários por Unidade e Dia")
-if 'Unidade' in df_disp_filtrado.columns and 'Dia' in df_disp_filtrado.columns:
-    df_heat = df_disp_filtrado.groupby(['Unidade', 'Dia']).size().reset_index(name='Total')
-    fig_heat = px.density_heatmap(df_heat, x='Dia', y='Unidade', z='Total', color_continuous_scale=['#ffffff', '#FF6B6B', '#C8102E', '#5C0601'], category_orders={'Dia': ['SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB']})
-    fig_heat.update_layout(plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)')
-    st.plotly_chart(fig_heat, use_container_width=True)
+st.subheader("🌐 Distribuição por Grande Área de Conhecimento")
+df_areas = df_ader_filtrado['Area'].value_counts().reset_index()
+df_areas.columns = ['Area', 'Total']
+
+fig_areas = px.bar(df_areas, x='Total', y='Area', orientation='h', text='Total', color='Total', color_continuous_scale=['#B22222', '#DC143C'])
+fig_areas.update_layout(
+    yaxis={'categoryorder':'total ascending'}, 
+    plot_bgcolor='rgba(0,0,0,0)', 
+    paper_bgcolor='rgba(0,0,0,0)',
+    margin=dict(l=380, r=40, t=30, b=30),
+    height=450
+)
+st.plotly_chart(fig_areas, use_container_width=True)
 
 st.markdown("---")
-st.subheader("📋 Registros Detalhados de Disponibilidades")
 
-# Campo de busca interativo na tabela
-busca_disp = st.text_input("🔍 Buscar por Professor ou Unidade:", key="busca_p3")
-df_tabela_disp = df_disp_filtrado.copy()
-if busca_disp:
-    mask = df_tabela_disp.astype(str).apply(lambda x: x.str.contains(busca_disp, case=False, na=False)).any(axis=1)
-    df_tabela_disp = df_tabela_disp[mask]
+st.subheader("📖 Top 10 Disciplinas com Maior Volume de Aderências")
+if 'Disciplina' in df_ader_filtrado.columns:
+    df_disc = df_ader_filtrado['Disciplina'].value_counts().reset_index().head(10)
+    df_disc.columns = ['Disciplina', 'Total']
+    fig_disc = px.bar(df_disc, x='Total', y='Disciplina', orientation='h', text='Total', color='Total', color_continuous_scale=['#900B1F', '#C8102E'])
+    fig_disc.update_layout(
+        yaxis={'categoryorder':'total ascending'}, 
+        plot_bgcolor='rgba(0,0,0,0)', 
+        paper_bgcolor='rgba(0,0,0,0)',
+        margin=dict(l=280, r=20, t=30, b=30),
+        height=450
+    )
+    st.plotly_chart(fig_disc, use_container_width=True)
 
-st.dataframe(df_tabela_disp, use_container_width=True, hide_index=True)
+# ---- NOVA ANÁLISE EXECUTIVA DE ADERÊNCIA (Sem repetir gráficos) ----
+st.markdown("---")
+st.subheader("💡 Indicadores de Eficiência de Alocação")
+col_ad1, col_ad2, col_ad3 = st.columns(3)
+col_ad1.metric("⚖️ Relação Professor/Disciplina", f"{len(df_ader_filtrado) / max(df_ader_filtrado['Professor'].nunique(), 1):.2f}", delta="Índice de Versatilidade")
+col_ad2.metric("🏷️ Áreas Ativas na Seleção", df_ader_filtrado['Area'].nunique(), delta="Escopo Acadêmico")
+col_ad3.metric("📌 Concentração Média por Disciplina", f"{len(df_ader_filtrado) / max(df_ader_filtrado['Disciplina'].nunique(), 1):.1f}", delta="Demanda Média")
+# --------------------------------------------------------------------
+
+st.markdown("---")
+st.subheader("📋 Registros Detalhados de Aderências")
+
+busca_ader = st.text_input("🔍 Buscar por Curso, Disciplina ou Professor:", key="busca_p2", placeholder="Digite para filtrar...")
+df_tabela_ader = df_ader_filtrado.copy()
+if busca_ader and busca_ader.strip() != "":
+    mask = df_tabela_ader.astype(str).apply(lambda x: x.str.contains(busca_ader, case=False, na=False)).any(axis=1)
+    df_tabela_ader = df_tabela_ader[mask]
+
+st.dataframe(df_tabela_ader, use_container_width=True, hide_index=True)
