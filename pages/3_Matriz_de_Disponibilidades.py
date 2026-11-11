@@ -3,8 +3,16 @@ import pandas as pd
 import plotly.express as px
 
 st.set_page_config(page_title="Disponibilidades | UNA", page_icon="🕒", layout="wide")
+
+st.markdown("""
+    <style>
+        .stApp { background-color: #f4f6f9; }
+        .main { background-color: #f4f6f9; }
+    </style>
+""", unsafe_allow_html=True)
+
 st.title("🕒 Matriz de Disponibilidades & Otimização de Turnos")
-st.markdown("Cruzamento avançado de horários, dias da semana e distribuição espacial por unidade acadêmica.")
+st.markdown("Cruzamento avançado de horários, dias da semana, distribuição espacial por unidade acadêmica e gargalos de alocação.")
 st.markdown("---")
 
 @st.cache_data
@@ -65,12 +73,21 @@ with col3:
         st.plotly_chart(fig_horario, use_container_width=True)
 
 with col4:
-    st.subheader("📊 Cruzamento Unidade x Período")
+    st.subheader("📊 Cruzamento Unidade x Período (Stack)")
     if 'Horario' in df_disp_filtrado.columns and 'Unidade' in df_disp_filtrado.columns:
         df_cruz = df_disp_filtrado.groupby(['Unidade', 'Horario']).size().reset_index(name='Total')
         fig_cruz = px.bar(df_cruz, x='Unidade', y='Total', color='Horario', barmode='stack', color_discrete_sequence=['#C8102E', '#FF6B6B', '#5C0601'])
         fig_cruz.update_layout(xaxis_tickangle=-45, plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)')
         st.plotly_chart(fig_cruz, use_container_width=True)
+
+st.markdown("---")
+
+st.subheader("🔥 Matriz de Calor: Intensidade de Horários por Unidade e Dia")
+if 'Unidade' in df_disp_filtrado.columns and 'Dia' in df_disp_filtrado.columns:
+    df_heat = df_disp_filtrado.groupby(['Unidade', 'Dia']).size().reset_index(name='Total')
+    fig_heat = px.density_heatmap(df_heat, x='Dia', y='Unidade', z='Total', color_continuous_scale=['#ffffff', '#FF6B6B', '#C8102E', '#5C0601'], category_orders={'Dia': ['SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB']})
+    fig_heat.update_layout(plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)')
+    st.plotly_chart(fig_heat, use_container_width=True)
 
 st.markdown("---")
 st.subheader("📋 Registros Detalhados de Disponibilidades")
