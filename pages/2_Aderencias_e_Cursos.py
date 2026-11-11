@@ -3,8 +3,16 @@ import pandas as pd
 import plotly.express as px
 
 st.set_page_config(page_title="Aderências & Cursos | UNA", page_icon="📚", layout="wide")
+
+st.markdown("""
+    <style>
+        .stApp { background-color: #f4f6f9; }
+        .main { background-color: #f4f6f9; }
+    </style>
+""", unsafe_allow_html=True)
+
 st.title("📚 Módulo de Aderências & Alocação Curricular")
-st.markdown("Análise profunda de cursos, áreas de conhecimento e disciplinas vinculadas aos docentes.")
+st.markdown("Análise profunda de cursos, grandes áreas de conhecimento e o ranking das disciplinas com maior demanda.")
 st.markdown("---")
 
 @st.cache_data
@@ -32,8 +40,7 @@ c3.metric("📖 Disciplinas Vinculadas", df_ader_filtrado['Disciplina'].nunique(
 
 st.markdown("##")
 
-# Gráfico 1: Top Cursos (Largura total)
-st.subheader("🏛️ Top Cursos com Mais Aderências")
+st.subheader("🏛️ Top 10 Cursos com Mais Aderências")
 df_cursos = df_ader_filtrado['Curso'].value_counts().reset_index().head(10)
 df_cursos.columns = ['Curso', 'Total']
 fig_cursos = px.bar(df_cursos, x='Total', y='Curso', orientation='h', text='Total', color='Total', color_continuous_scale=['#8B0000', '#C8102E'])
@@ -42,8 +49,7 @@ st.plotly_chart(fig_cursos, use_container_width=True)
 
 st.markdown("---")
 
-# Gráfico 2: Distribuição por Grande Área (Com margem l=380 para o texto não cortar)
-st.subheader("🌐 Distribuição por Grande Área")
+st.subheader("🌐 Distribuição por Grande Área de Conhecimento")
 df_areas = df_ader_filtrado['Area'].value_counts().reset_index()
 df_areas.columns = ['Area', 'Total']
 
@@ -53,9 +59,25 @@ fig_areas.update_layout(
     plot_bgcolor='rgba(0,0,0,0)', 
     paper_bgcolor='rgba(0,0,0,0)',
     margin=dict(l=380, r=40, t=30, b=30),
-    height=500
+    height=450
 )
 st.plotly_chart(fig_areas, use_container_width=True)
+
+st.markdown("---")
+
+st.subheader("📖 Top 10 Disciplinas com Maior Volume de Aderências")
+if 'Disciplina' in df_ader_filtrado.columns:
+    df_disc = df_ader_filtrado['Disciplina'].value_counts().reset_index().head(10)
+    df_disc.columns = ['Disciplina', 'Total']
+    fig_disc = px.bar(df_disc, x='Total', y='Disciplina', orientation='h', text='Total', color='Total', color_continuous_scale=['#900B1F', '#C8102E'])
+    fig_disc.update_layout(
+        yaxis={'categoryorder':'total ascending'}, 
+        plot_bgcolor='rgba(0,0,0,0)', 
+        paper_bgcolor='rgba(0,0,0,0)',
+        margin=dict(l=280, r=20, t=30, b=30),
+        height=450
+    )
+    st.plotly_chart(fig_disc, use_container_width=True)
 
 st.markdown("---")
 st.subheader("📋 Registros Detalhados de Aderências")
