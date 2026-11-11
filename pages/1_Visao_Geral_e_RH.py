@@ -3,8 +3,16 @@ import pandas as pd
 import plotly.express as px
 
 st.set_page_config(page_title="Visão Geral & RH | UNA", page_icon="📊", layout="wide")
+
+st.markdown("""
+    <style>
+        .stApp { background-color: #f4f6f9; }
+        .main { background-color: #f4f6f9; }
+    </style>
+""", unsafe_allow_html=True)
+
 st.title("📊 Visão Geral: Corpo Docente & Indicadores de RH")
-st.markdown("Monitoramento integrado do quadro de professores, titulações acadêmicas e tempo de casa.")
+st.markdown("Monitoramento integrado do quadro de professores, titulações acadêmicas, tempo de casa e profundidade de formação.")
 st.markdown("---")
 
 @st.cache_data
@@ -49,6 +57,17 @@ with col2:
     fig_form = px.bar(df_form, x='Total', y='Formacao', orientation='h', text='Total', color='Total', color_continuous_scale=['#B22222', '#DC143C'])
     fig_form.update_layout(yaxis={'categoryorder':'total ascending'}, plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)')
     st.plotly_chart(fig_form, use_container_width=True)
+
+st.markdown("---")
+st.subheader("🔬 Análise Avançada: Cruzamento de Titulação vs Principais Formações")
+if 'Titulacao' in df_prof_filtrado.columns and 'Formacao' in df_prof_filtrado.columns:
+    df_cruz_rh = df_prof_filtrado.groupby(['Formacao', 'Titulacao']).size().reset_index(name='Total')
+    top_formacoes = df_prof_filtrado['Formacao'].value_counts().head(8).index
+    df_cruz_rh_top = df_cruz_rh[df_cruz_rh['Formacao'].isin(top_formacoes)]
+    
+    fig_cruz_rh = px.bar(df_cruz_rh_top, x='Total', y='Formacao', color='Titulacao', orientation='h', barmode='stack', color_discrete_sequence=['#C8102E', '#E63946', '#FF6B6B', '#5C0601'])
+    fig_cruz_rh.update_layout(plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', margin=dict(l=200, r=20, t=30, b=30))
+    st.plotly_chart(fig_cruz_rh, use_container_width=True)
 
 st.markdown("---")
 st.subheader("📋 Detalhamento do Corpo Docente")
