@@ -91,4 +91,12 @@ if 'Unidade' in df_disp_filtrado.columns and 'Dia' in df_disp_filtrado.columns:
 
 st.markdown("---")
 st.subheader("📋 Registros Detalhados de Disponibilidades")
-st.dataframe(df_disp_filtrado, use_container_width=True, hide_index=True)
+
+# Campo de busca interativo na tabela
+busca_disp = st.text_input("🔍 Buscar por Professor ou Unidade:", key="busca_p3")
+df_tabela_disp = df_disp_filtrado.copy()
+if busca_disp:
+    mask = df_tabela_disp.astype(str).apply(lambda x: x.str.contains(busca_disp, case=False, na=False)).any(axis=1)
+    df_tabela_disp = df_tabela_disp[mask]
+
+st.dataframe(df_tabela_disp, use_container_width=True, hide_index=True)
