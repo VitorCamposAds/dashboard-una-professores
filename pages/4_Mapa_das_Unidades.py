@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import pydeck as pdk
 from rapidfuzz import process, fuzz
+import unicodedata
 
 st.set_page_config(page_title="Mapa das Unidades | UNA", page_icon="🗺️", layout="wide")
 
@@ -29,7 +30,7 @@ def carregar_dados():
 
 df_rh, df_ader, df_prof, df_disp = carregar_dados()
 
-# Dicionário oficial com as 17 unidades físicas da rede
+# Dicionário oficial com as unidades físicas da rede
 coordenadas_unidades = {
     'Aimorés': {'lat': -19.9245, 'lon': -43.9450, 'estado': 'MG'},
     'Liberdade': {'lat': -19.9281, 'lon': -43.9383, 'estado': 'MG'},
@@ -56,7 +57,14 @@ coordenadas_unidades = {
     'Rio Verde': {'lat': -17.7944, 'lon': -50.9192, 'estado': 'GO'}
 }
 
-lista_nomes_oficiais = list(coordenadas_unidades.keys())
+def remover_acentos(texto):
+    if pd.isna(texto):
+        return ""
+    nfkd = unicodedata.normalize('NFKD', str(texto))
+    return "".join([c for c in nfkd if not unicodedata.combining(c)]).strip().lower()
+
+dic_sem_acento = {remover_acentos(k): k for k in coordenadas_unidades.keys()}
+lista_chaves_limpas = list(dic_sem_acento.keys())
 
 def limpar_e_mapear_unidade(nome):
     if pd.isna(nome):
@@ -65,41 +73,31 @@ def limpar_e_mapear_unidade(nome):
     if s.lower().startswith("una -"):
         s = s[5:].strip()
     
-    match, score, _ = process.extractOne(s, lista_nomes_oficiais, scorer=fuzz.WRatio)
-    if score >= 50:  # Tolerância aberta para pegar qualquer variação de escrita
-        return match
+    s_limpo = remover_acentos(s)
+    match, score, _ = process.extractOne(s_limpo, lista_chaves_limpas, scorer=fuzz.WRatio)
+    if score >= 40:
+        return dic_sem_acento[match]
     return s
 
-# Identifica automaticamente qual coluna da base representa a unidade e qual representa o professor
-coluna_unidade_alvo = None
-for col in df_disp.columns:
-    if any(termo in str(col).lower() for termo in ['unidade', 'campus', 'polo', 'local']):
-        coluna_unidade_alvo = col
-        break
-if not coluna_unidade_alvo:
-    coluna_unidade_alvo = df_disp.columns[0]  # Fallback para a primeira coluna
+# Processamento seguro da base de disponibilidades
+if 'Unidade' in df_disp.columns:
+    df_disp_presencial = df_disp[
+        ~df_disp['Unidade'].astype(str).str.contains("digital|ead|virtual|online", case=False, na=False)
+    ].copy()
 
-coluna_prof_alvo = None
-for col in df_disp.columns:
-    if any(termo in str(col).lower() for termo in ['professor', 'docente', 'nome', 'id']):
-        coluna_prof_alvo = col
-        break
-if not coluna_prof_alvo:
-    coluna_prof_alvo = df_disp.columns[1] if len(df_disp.columns) > 1 else df_disp.columns[0]
+    df_disp_presencial['Unidade_Padronizada'] = df_disp_presencial['Unidade'].apply(limpar_e_mapear_unidade)
 
-# Filtra e agrupa os dados reais
-df_disp_presencial = df_disp[
-    ~df_disp[coluna_unidade_alvo].astype(str).str.contains("digital|ead|virtual|online", case=False, na=False)
-].copy()
+    # Identifica a coluna de professor ou usa o índice para contagem de registros/horários
+    col_contagem = 'Professor' if 'Professor' in df_disp_presencial.columns else df_disp_presencial.columns[0]
 
-df_disp_presencial['Unidade_Padronizada'] = df_disp_presencial[coluna_unidade_alvo].apply(limpar_e_mapear_unidade)
+    df_agrupado = df_disp_presencial.groupby('Unidade_Padronizada').agg(
+        Total_Disponibilidades=(col_contagem, 'count'),
+        Professores_Unicos=(col_contagem, 'nunique')
+    ).reset_index().rename(columns={'Unidade_Padronizada': 'Unidade_Oficial'})
+else:
+    df_agrupado = pd.DataFrame(columns=['Unidade_Oficial', 'Total_Disponibilidades', 'Professores_Unicos'])
 
-df_agrupado = df_disp_presencial.groupby('Unidade_Padronizada').agg(
-    Total_Disponibilidades=(coluna_prof_alvo, 'count'),
-    Professores_Unicos=(coluna_prof_alvo, 'nunique')
-).reset_index().rename(columns={'Unidade_Padronizada': 'Unidade_Oficial'})
-
-# Monta o resultado final garantindo o cruzamento de todas as 17 unidades oficiais
+# Constrói o consolidado final garantindo todas as 17 unidades
 dados_finais = []
 for nome, info in coordenadas_unidades.items():
     row_dados = df_agrupado[df_agrupado['Unidade_Oficial'].str.lower() == nome.lower()]
@@ -158,12 +156,13 @@ if not df_tabela_mapa.empty:
         pitch=0,
     )
 
+    # Tooltip corrigido sem gambiarra de código Python dentro do HTML
     r = pdk.Deck(
         layers=[layer],
         initial_view_state=view_state,
         map_style="light",
         tooltip={
-            "html": "<b>Unidade:</b> {Unidade}<br/><b>Estado:</b> {State if 'State' in locals() else Estado}<br/><b>Total de Horários:</b> {Total_Disponibilidades}<br/><b>Professores Únicos:</b> {Professores_Unicos}",
+            "html": "<b>Unidade:</b> {Unidade}<br/><b>Estado:</b> {Estado}<br/><b>Total de Horários:</b> {Total_Disponibilidades}<br/><b>Professores Únicos:</b> {Professores_Unicos}",
             "style": {"backgroundColor": "#C8102E", "color": "white", "fontFamily": "sans-serif", "padding": "10px"}
         }
     )
