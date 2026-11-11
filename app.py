@@ -12,11 +12,11 @@ st.markdown("""
         .stApp { background-color: #f4f6f9; }
         .main { background-color: #f4f6f9; }
         
-        .hero-banner {
+        .hero-box {
             background: linear-gradient(135deg, #C8102E 0%, #900B1F 100%);
             padding: 40px;
             border-radius: 16px;
-            color: white;
+            color: #ffffff;
             box-shadow: 0 10px 25px rgba(200, 16, 46, 0.2);
             margin-bottom: 30px;
         }
@@ -28,27 +28,23 @@ st.markdown("""
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
             height: 100%;
         }
-        h1, h2, h3 { color: #1e293b; font-family: 'Inter', sans-serif; }
+        h2, h3 { color: #1e293b; font-family: 'Inter', sans-serif; }
     </style>
 """, unsafe_allow_html=True)
 
-# Removemos a logo da barra lateral e criamos o banner com a logo dentro
-with st.container():
-    st.markdown("""
-        <div class="hero-banner">
-    """, unsafe_allow_html=True)
-    
-    # Coloca a logo dentro do banner (com largura proporcional elegante)
-    st.image("logo_una.png", width=180)
-    
-    st.markdown("""
-            <h1 style="color: white; font-size: 2.3rem; margin-top: 15px; margin-bottom: 10px;">Hub de Gestão de Corpo Docente & Aderências</h1>
-            <h3 style="color: #ffcccc; font-weight: 400; margin-bottom: 20px;">65 Anos Mudando Mundos • Inteligência Acadêmica & RH</h3>
-            <p style="font-size: 1.1rem; color: #f8d7da; max-width: 900px; line-height: 1.5;">
-                Plataforma executiva de alta precisão para monitoramento do corpo docente, cruzamentos oficiais com a base de Recursos Humanos, gestão avançada de titulações, aderências curriculares e otimização de disponibilidades horárias por unidade.
-            </p>
-        </div>
-    """, unsafe_allow_html=True)
+# Bloco unificado com a logo e o texto legível dentro da caixa vermelha
+st.markdown("""
+    <div class="hero-box">
+        <h1 style="color: #ffffff !important; font-size: 2.3rem; margin-top: 10px; margin-bottom: 10px;">🎓 Hub de Gestão de Corpo Docente & Aderências</h1>
+        <h3 style="color: #ffe6e6 !important; font-weight: 400; margin-bottom: 20px;">65 Anos Mudando Mundos • Inteligência Acadêmica & RH</h3>
+        <p style="font-size: 1.1rem; color: #ffffff !important; max-width: 900px; line-height: 1.5;">
+            Plataforma executiva de alta precisão para monitoramento do corpo docente, cruzamentos oficiais com a base de Recursos Humanos, gestão avançada de titulações, aderências curriculares e otimização de disponibilidades horárias por unidade.
+        </p>
+    </div>
+""", unsafe_allow_html=True)
+
+# Logo colocada limpa logo abaixo do banner ou você pode ajustá-la onde preferir
+st.image("logo_una.png", width=200)
 
 st.markdown("## 🧭 Guia Operacional e Arquitetura do Painel")
 
