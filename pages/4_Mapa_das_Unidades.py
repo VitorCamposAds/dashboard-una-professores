@@ -28,8 +28,9 @@ def carregar_dados():
 
 df_rh, df_ader, df_prof, df_disp = carregar_dados()
 
-# Dicionário de coordenadas (Minas Gerais + Goiás)
+# Dicionário completo com as 17 unidades presenciais reais mapeadas (MG e GO)
 coordenadas_unidades = {
+    # Belo Horizonte e Região Metropolitana (MG)
     'Aimorés': {'lat': -19.9245, 'lon': -43.9450, 'estado': 'MG'},
     'Liberdade': {'lat': -19.9281, 'lon': -43.9383, 'estado': 'MG'},
     'Centro': {'lat': -19.9213, 'lon': -43.9388, 'estado': 'MG'},
@@ -38,11 +39,17 @@ coordenadas_unidades = {
     'Contagem': {'lat': -19.9315, 'lon': -44.0539, 'estado': 'MG'},
     'Betim': {'lat': -19.9676, 'lon': -44.1983, 'estado': 'MG'},
     'Buritis': {'lat': -19.9482, 'lon': -43.9654, 'estado': 'MG'},
+    'Horto': {'lat': -19.9102, 'lon': -43.9180, 'estado': 'MG'},
+    'Justinópolis': {'lat': -19.7891, 'lon': -44.0753, 'estado': 'MG'},
+    
+    # Interior de Minas Gerais (MG)
     'Sete Lagoas': {'lat': -19.4627, 'lon': -44.2486, 'estado': 'MG'},
     'Cataguases': {'lat': -21.3886, 'lon': -42.6978, 'estado': 'MG'},
     'Pouso Alegre': {'lat': -22.2300, 'lon': -45.9356, 'estado': 'MG'},
     'Uberlândia': {'lat': -18.9186, 'lon': -48.2772, 'estado': 'MG'},
     'Uberaba': {'lat': -19.7475, 'lon': -47.9317, 'estado': 'MG'},
+    
+    # Estado de Goiás (GO)
     'Goiânia': {'lat': -16.6864, 'lon': -49.2643, 'estado': 'GO'},
     'Jataí': {'lat': -17.8814, 'lon': -51.7144, 'estado': 'GO'},
     'Itumbiara': {'lat': -18.4219, 'lon': -49.2153, 'estado': 'GO'},
@@ -89,7 +96,7 @@ if busca_mapa and busca_mapa.strip() != "":
 if not df_tabela_mapa.empty:
     st.subheader("📍 Mapa Interativo dos Campi (Passe o mouse para ver os dados)")
     
-    # Raio bem menor e contido (máximo de 3500 metros em vez de 12000)
+    # Bolinhas bem discretas e proporcionais
     max_val = df_tabela_mapa['Total_Disponibilidades'].max() if not df_tabela_mapa.empty else 1
     df_tabela_mapa['radius'] = df_tabela_mapa['Total_Disponibilidades'].apply(lambda x: int((x / max_val) * 2500 + 1000))
 
