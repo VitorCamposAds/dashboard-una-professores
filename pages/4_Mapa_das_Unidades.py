@@ -79,28 +79,41 @@ def limpar_e_mapear_unidade(nome):
         return dic_sem_acento[match]
     return s
 
-# Processamento seguro da base de disponibilidades
-if 'Unidade' in df_disp.columns:
-    df_disp_presencial = df_disp[
-        ~df_disp['Unidade'].astype(str).str.contains("digital|ead|virtual|online", case=False, na=False)
-    ].copy()
+if not df_disp.empty:
+    # Descobre automaticamente a coluna que contém o nome da unidade
+    coluna_unidade_alvo = None
+    for col in df_disp.columns:
+        if any(termo in str(col).lower() for termo in ['unidade', 'campus', 'polo', 'local']):
+            coluna_unidade_alvo = col
+            break
+    if not coluna_unidade_alvo:
+        coluna_unidade_alvo = df_disp.columns[0]
 
-    df_disp_presencial['Unidade_Padronizada'] = df_disp_presencial['Unidade'].apply(limpar_e_mapear_unidade)
+    # Descobre automaticamente a coluna que contém o professor para contagem
+    coluna_prof_alvo = None
+    for col in df_disp.columns:
+        if any(termo in str(col).lower() for termo in ['professor', 'docente', 'nome', 'id', 'codigo']):
+            coluna_prof_alvo = col
+            break
+    if not coluna_prof_alvo:
+        coluna_prof_alvo = df_disp.columns[1] if len(df_disp.columns) > 1 else df_disp.columns[0]
 
-    # Identifica a coluna de professor ou usa o índice para contagem de registros/horários
-    col_contagem = 'Professor' if 'Professor' in df_disp_presencial.columns else df_disp_presencial.columns[0]
+    # Copia a base de disponibilidades sem filtrar agressivamente para evitar sumir dados válidos
+    df_disp_presencial = df_disp.copy()
+    df_disp_presencial['Unidade_Padronizada'] = df_disp_presencial[coluna_unidade_alvo].apply(limpar_e_mapear_unidade)
 
+    # Agrupa e conta os registros por unidade padronizada
     df_agrupado = df_disp_presencial.groupby('Unidade_Padronizada').agg(
-        Total_Disponibilidades=(col_contagem, 'count'),
-        Professores_Unicos=(col_contagem, 'nunique')
+        Total_Disponibilidades=(coluna_prof_alvo, 'count'),
+        Professores_Unicos=(coluna_prof_alvo, 'nunique')
     ).reset_index().rename(columns={'Unidade_Padronizada': 'Unidade_Oficial'})
 else:
     df_agrupado = pd.DataFrame(columns=['Unidade_Oficial', 'Total_Disponibilidades', 'Professores_Unicos'])
 
-# Constrói o consolidado final garantindo todas as 17 unidades
+# Monta o consolidado final forçando todas as 17 unidades oficiais
 dados_finais = []
 for nome, info in coordenadas_unidades.items():
-    row_dados = df_agrupado[df_agrupado['Unidade_Oficial'].str.lower() == nome.lower()]
+    row_dados = df_agrupado[df_agrupado['Unidade_Oficial'].str.lower() == remover_acentos(nome)]
     total_disp = int(row_dados['Total_Disponibilidades'].values[0]) if not row_dados.empty else 0
     prof_unicos = int(row_dados['Professores_Unicos'].values[0]) if not row_dados.empty else 0
     
@@ -156,7 +169,6 @@ if not df_tabela_mapa.empty:
         pitch=0,
     )
 
-    # Tooltip corrigido sem gambiarra de código Python dentro do HTML
     r = pdk.Deck(
         layers=[layer],
         initial_view_state=view_state,
