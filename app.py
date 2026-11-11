@@ -1,5 +1,6 @@
 import streamlit as st
 import base64
+import os
 
 st.set_page_config(
     page_title="Hub Executivo | UNA",
@@ -8,25 +9,13 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Função para converter a logo em base64 para injetar direto no HTML centralizado
-@st.cache_data
-def get_image_base64(path):
-    try:
-        with open(path, "rb") as f:
-            data = f.read()
-        return base64.b64encode(data).decode()
-    except:
-        return ""
-
-img_b64 = get_image_base64("logo_una.png")
-img_tag = f'<img src="data:image/png;base64,{img_b64}" style="width: 140px; margin-bottom: 20px; display: block; margin-left: auto; margin-right: auto;">' if img_b64 else '<h2 style="color:white;">UNA</h2>'
-
-st.markdown(f"""
+# Estilos CSS globais da aplicação
+st.markdown("""
     <style>
-        .stApp {{ background-color: #f4f6f9; }}
-        .main {{ background-color: #f4f6f9; }}
+        .stApp { background-color: #f4f6f9; }
+        .main { background-color: #f4f6f9; }
         
-        .hero-box {{
+        .hero-box {
             background-color: #DE0309;
             padding: 35px 40px;
             border-radius: 16px;
@@ -35,7 +24,7 @@ st.markdown(f"""
             margin-bottom: 30px;
             text-align: center;
         }
-        .card-exec {{
+        .card-exec {
             background-color: white;
             padding: 25px;
             border-radius: 12px;
@@ -43,11 +32,25 @@ st.markdown(f"""
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
             height: 100%;
         }
-        h2, h3 {{ color: #1e293b; font-family: 'Inter', sans-serif; }}
+        h2, h3 { color: #1e293b; font-family: 'Inter', sans-serif; }
     </style>
+""", unsafe_allow_html=True)
 
-    <div class="hero-box">
-        {img_tag}
+# Função segura para carregar a logo em base64
+def render_logo():
+    if os.path.exists("logo_una.png"):
+        with open("logo_una.png", "rb") as f:
+            data = f.read()
+        encoded = base64.b64encode(data).decode()
+        st.markdown(
+            f'<div style="text-align: center;"><img src="data:image/png;base64,{encoded}" style="width: 130px; margin-bottom: 15px;"></div>',
+            unsafe_allow_html=True
+        )
+
+# Bloco unificado com a logo centralizada e textos dentro da caixa vermelha #DE0309
+st.markdown('<div class="hero-box">', unsafe_allow_html=True)
+render_logo()
+st.markdown("""
         <h1 style="color: #ffffff !important; font-size: 2.0rem; margin-top: 0px; margin-bottom: 8px;">Hub de Gestão de Corpo Docente & Aderências</h1>
         <h3 style="color: #ffe6e6 !important; font-weight: 400; font-size: 1.1rem; margin-bottom: 15px;">65 Anos Mudando Mundos • Inteligência Acadêmica & RH</h3>
         <p style="font-size: 1.0rem; color: #ffffff !important; max-width: 850px; margin: 0 auto; line-height: 1.4;">
