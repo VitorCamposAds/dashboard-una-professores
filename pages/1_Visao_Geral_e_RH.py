@@ -57,24 +57,18 @@ with col2:
     fig_form.update_layout(yaxis={'categoryorder':'total ascending'}, plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)')
     st.plotly_chart(fig_form, use_container_width=True)
 
-# ---- NOVO Bloco Adicionado sem apagar nada ----
+# ---- NOVA ANÁLISE EXECUTIVA (Sem repetir gráficos, focada em indicadores de proporção) ----
 st.markdown("---")
-st.subheader("🍩 Proporção Estratégica do Corpo Docente por Titulação")
-col_n1, col_n2 = st.columns([2, 1])
-with col_n1:
-    fig_donut = px.pie(df_prof_filtrado, names='Titulacao', hole=0.6, color_discrete_sequence=['#C8102E', '#FF4D4D', '#8B0000', '#E63946', '#5C0601'])
-    fig_donut.update_layout(plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', legend=dict(orientation="h", yanchor="bottom", y=-0.2, xanchor="center", x=0.5))
-    st.plotly_chart(fig_donut, use_container_width=True)
-with col_n2:
-    st.markdown("""
-        <div style="background-color: white; padding: 20px; border-radius: 10px; border-left: 5px solid #C8102E; height: 100%;">
-            <h4>💡 Insights de Titulação</h4>
-            <p style="color: #64748b; font-size: 0.9rem;">
-                Análise percentual para suporte direto ao cumprimento das exigências de qualificação do corpo docente frente aos indicadores do MEC.
-            </p>
-        </div>
-    """, unsafe_allow_html=True)
-# -----------------------------------------------
+st.subheader("💡 Indicadores Executivos de Qualificação")
+tot_prof = max(len(df_prof_filtrado), 1)
+qtd_mest_dout = len(df_prof_filtrado[df_prof_filtrado['Titulacao'].isin(['Mestrado', 'Doutorado', 'Pós-Doutorado'])])
+perc_titulados = (qtd_mest_dout / tot_prof) * 100
+
+col_ind1, col_ind2, col_ind3 = st.columns(3)
+col_ind1.metric("📈 Índice de Titulação Stricto Sensu", f"{perc_titulados:.1f}%", delta="Meta Institucional")
+col_ind2.metric("🏛️ Total de Formações Distintas", df_prof_filtrado['Formacao'].nunique(), delta="Diversidade de Grade")
+col_ind3.metric("🔍 Nível de Cobertura da Base", f"{(len(df_prof_filtrado)/max(len(df_prof), 1))*100:.1f}%", delta="Filtro Ativo")
+# ------------------------------------------------------------------------------------------
 
 st.markdown("---")
 st.subheader("🔬 Análise Avançada: Cruzamento de Titulação vs Principais Formações")
