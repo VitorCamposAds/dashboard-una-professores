@@ -80,7 +80,6 @@ def limpar_e_mapear_unidade(nome):
     return s
 
 if not df_disp.empty:
-    # Descobre automaticamente a coluna que contém o nome da unidade
     coluna_unidade_alvo = None
     for col in df_disp.columns:
         if any(termo in str(col).lower() for termo in ['unidade', 'campus', 'polo', 'local']):
@@ -89,7 +88,6 @@ if not df_disp.empty:
     if not coluna_unidade_alvo:
         coluna_unidade_alvo = df_disp.columns[0]
 
-    # Descobre automaticamente a coluna que contém o professor para contagem
     coluna_prof_alvo = None
     for col in df_disp.columns:
         if any(termo in str(col).lower() for termo in ['professor', 'docente', 'nome', 'id', 'codigo']):
@@ -98,22 +96,25 @@ if not df_disp.empty:
     if not coluna_prof_alvo:
         coluna_prof_alvo = df_disp.columns[1] if len(df_disp.columns) > 1 else df_disp.columns[0]
 
-    # Copia a base de disponibilidades sem filtrar agressivamente para evitar sumir dados válidos
     df_disp_presencial = df_disp.copy()
     df_disp_presencial['Unidade_Padronizada'] = df_disp_presencial[coluna_unidade_alvo].apply(limpar_e_mapear_unidade)
 
-    # Agrupa e conta os registros por unidade padronizada
-    df_agrupado = df_disp_presencial.groupby('Unidade_Padronizada').agg(
+    # Cria uma chave sem acento na base agrupada para garantir o match exato
+    df_disp_presencial['Chave_Match'] = df_disp_presencial['Unidade_Padronizada'].apply(remover_acentos)
+
+    df_agrupado = df_disp_presencial.groupby('Chave_Match').agg(
         Total_Disponibilidades=(coluna_prof_alvo, 'count'),
         Professores_Unicos=(coluna_prof_alvo, 'nunique')
-    ).reset_index().rename(columns={'Unidade_Padronizada': 'Unidade_Oficial'})
+    ).reset_index()
 else:
-    df_agrupado = pd.DataFrame(columns=['Unidade_Oficial', 'Total_Disponibilidades', 'Professores_Unicos'])
+    df_agrupado = pd.DataFrame(columns=['Chave_Match', 'Total_Disponibilidades', 'Professores_Unicos'])
 
-# Monta o consolidado final forçando todas as 17 unidades oficiais
+# Monta o consolidado final usando a mesma chave sem acentos para o cruzamento
 dados_finais = []
 for nome, info in coordenadas_unidades.items():
-    row_dados = df_agrupado[df_agrupado['Unidade_Oficial'].str.lower() == remover_acentos(nome)]
+    chave_busca = remover_acentos(nome)
+    row_dados = df_agrupado[df_agrupado['Chave_Match'] == chave_busca]
+    
     total_disp = int(row_dados['Total_Disponibilidades'].values[0]) if not row_dados.empty else 0
     prof_unicos = int(row_dados['Professores_Unicos'].values[0]) if not row_dados.empty else 0
     
