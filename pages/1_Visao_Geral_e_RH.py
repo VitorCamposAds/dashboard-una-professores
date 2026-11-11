@@ -33,17 +33,11 @@ titulacoes_disponiveis = sorted([str(x) for x in df_prof['Titulacao'].dropna().u
 titulacao_selecionada = st.sidebar.multiselect("Filtrar por Titulação:", titulacoes_disponiveis, default=titulacoes_disponiveis, key="tit_p1")
 df_prof_filtrado = df_prof[df_prof['Titulacao'].astype(str).isin(titulacao_selecionada)]
 
-# Indicador de match entre base de professores e RH
-mat_prof = set(df_prof['Matricula'].astype(str))
-mat_rh = set(df_rh['Matricula'].astype(str)) if 'Matricula' in df_rh.columns else set()
-match_count = len(mat_prof.intersection(mat_rh)) if mat_rh else len(mat_prof)
-taxa_match = f"{(match_count / max(len(df_prof), 1)) * 100:.1f}%"
-
-c1, c2, c3, c4 = st.columns(4)
-c1.metric("👨‍🏫 Total Professores Únicos", len(df_prof_filtrado), delta="Base Sincronizada")
+# Métricas reais corrigidas (sem porcentagens falsas)
+c1, c2, c3 = st.columns(3)
+c1.metric("👨‍🏫 Total Professores Únicos", len(df_prof_filtrado))
 c2.metric("🎓 Mestres e Doutores", len(df_prof_filtrado[df_prof_filtrado['Titulacao'].isin(['Mestrado', 'Doutorado', 'Pós-Doutorado'])]))
-c3.metric("🔗 Sincronização com RH", taxa_match, delta="Compliance Ativo")
-c4.metric("🏢 Colaboradores Base RH", len(df_rh))
+c3.metric("🏢 Colaboradores Base RH", len(df_rh))
 
 st.markdown("##")
 col1, col2 = st.columns(2)
