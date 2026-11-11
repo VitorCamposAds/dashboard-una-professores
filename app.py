@@ -1,4 +1,6 @@
 import streamlit as st
+import base64
+import os
 
 st.set_page_config(
     page_title="Hub Executivo | UNA",
@@ -7,11 +9,21 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+# Estilos CSS globais da aplicação
 st.markdown("""
     <style>
         .stApp { background-color: #f4f6f9; }
         .main { background-color: #f4f6f9; }
         
+        .hero-box {
+            background-color: #DE0309;
+            padding: 40px;
+            border-radius: 16px;
+            color: #ffffff;
+            box-shadow: 0 10px 25px rgba(222, 3, 9, 0.25);
+            margin-bottom: 30px;
+            text-align: center;
+        }
         .card-exec {
             background-color: white;
             padding: 25px;
@@ -24,26 +36,24 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Caixa vermelha única usando container nativo do Streamlit com fundo estilizado
-container = st.container()
-with container:
-    st.markdown("""
-        <div style="background-color: #DE0309; padding: 40px; border-radius: 16px; box-shadow: 0 10px 25px rgba(222, 3, 9, 0.25); margin-bottom: 30px; text-align: center;">
-    """, unsafe_allow_html=True)
-    
-    # Logo centralizada menorzinha dentro do bloco
-    col1, col2, col3 = st.columns([2, 1, 2])
-    with col2:
-        st.image("logo_una.png", use_container_width=True)
-        
-    st.markdown("""
-            <h1 style="color: #ffffff !important; font-size: 2.0rem; margin-top: 15px; margin-bottom: 8px;">Hub de Gestão de Corpo Docente & Aderências</h1>
-            <h3 style="color: #ffe6e6 !important; font-weight: 400; font-size: 1.1rem; margin-bottom: 15px;">65 Anos Mudando Mundos • Inteligência Acadêmica & RH</h3>
-            <p style="font-size: 1.0rem; color: #ffffff !important; max-width: 850px; margin: 0 auto; line-height: 1.4;">
-                Plataforma executiva de alta precisão para monitoramento do corpo docente, cruzamentos oficiais com a base de Recursos Humanos, gestão avançada de titulações, aderências curriculares e otimização de disponibilidades horárias por unidade.
-            </p>
-        </div>
-    """, unsafe_allow_html=True)
+# Carrega a logo em base64 de forma segura
+logo_html = ""
+if os.path.exists("logo_una.png"):
+    with open("logo_una.png", "rb") as f:
+        encoded = base64.b64encode(f.read()).decode()
+        logo_html = f'<img src="data:image/png;base64,{encoded}" style="width: 130px; margin-bottom: 15px; display: block; margin-left: auto; margin-right: auto;">'
+
+# Renderiza todo o banner unificado (Logo menorzinha, centralizada e textos dentro da mesma caixa #DE0309)
+st.markdown(f"""
+    <div class="hero-box">
+        {logo_html}
+        <h1 style="color: #ffffff !important; font-size: 2.0rem; margin-top: 0px; margin-bottom: 8px;">Hub de Gestão de Corpo Docente & Aderências</h1>
+        <h3 style="color: #ffe6e6 !important; font-weight: 400; font-size: 1.1rem; margin-bottom: 15px;">65 Anos Mudando Mundos • Inteligência Acadêmica & RH</h3>
+        <p style="font-size: 1.0rem; color: #ffffff !important; max-width: 850px; margin: 0 auto; line-height: 1.4;">
+            Plataforma executiva de alta precisão para monitoramento do corpo docente, cruzamentos oficiais com a base de Recursos Humanos, gestão avançada de titulações, aderências curriculares e otimização de disponibilidades horárias por unidade.
+        </p>
+    </div>
+""", unsafe_allow_html=True)
 
 st.markdown("## 🧭 Guia Operacional e Arquitetura do Painel")
 
