@@ -1,7 +1,6 @@
 import streamlit as st
 import pandas as pd
 import pydeck as pdk
-from rapidfuzz import process, fuzz
 import unicodedata
 
 st.set_page_config(page_title="Mapa das Unidades | UNA", page_icon="🗺️", layout="wide")
@@ -30,7 +29,13 @@ def carregar_dados():
 
 df_rh, df_ader, df_prof, df_disp = carregar_dados()
 
-# Dicionário oficial com as unidades físicas da rede
+def remover_acentos(texto):
+    if pd.isna(texto):
+        return ""
+    nfkd = unicodedata.normalize('NFKD', str(texto))
+    return "".join([c for c in nfkd if not unicodedata.combining(c)]).strip().lower()
+
+# AS EXATAS 17 UNIDADES OFICIAIS DA REDE
 coordenadas_unidades = {
     'Aimorés': {'lat': -19.9245, 'lon': -43.9450, 'estado': 'MG'},
     'Liberdade': {'lat': -19.9281, 'lon': -43.9383, 'estado': 'MG'},
@@ -39,7 +44,6 @@ coordenadas_unidades = {
     'Linha Verde': {'lat': -19.8351, 'lon': -43.9272, 'estado': 'MG'},
     'Contagem': {'lat': -19.9315, 'lon': -44.0539, 'estado': 'MG'},
     'Betim': {'lat': -19.9676, 'lon': -44.1983, 'estado': 'MG'},
-    'Buritis': {'lat': -19.9482, 'lon': -43.9654, 'estado': 'MG'},
     'Cristiano Machado': {'lat': -19.8752, 'lon': -43.9351, 'estado': 'MG'},
     'Sete Lagoas': {'lat': -19.4627, 'lon': -44.2486, 'estado': 'MG'},
     'Conselheiro Lafaiete': {'lat': -20.6558, 'lon': -43.7850, 'estado': 'MG'},
@@ -49,72 +53,42 @@ coordenadas_unidades = {
     'Bom Despacho': {'lat': -19.7397, 'lon': -45.2536, 'estado': 'MG'},
     'Divinópolis': {'lat': -20.1463, 'lon': -44.8906, 'estado': 'MG'},
     'Uberlândia': {'lat': -18.9186, 'lon': -48.2772, 'estado': 'MG'},
-    'Uberaba': {'lat': -19.7475, 'lon': -47.9317, 'estado': 'MG'},
-    'Catalão': {'lat': -18.1656, 'lon': -47.9467, 'estado': 'GO'},
-    'Goiânia': {'lat': -16.6864, 'lon': -49.2643, 'estado': 'GO'},
-    'Jataí': {'lat': -17.8814, 'lon': -51.7144, 'estado': 'GO'},
-    'Itumbiara': {'lat': -18.4219, 'lon': -49.2153, 'estado': 'GO'},
-    'Rio Verde': {'lat': -17.7944, 'lon': -50.9192, 'estado': 'GO'}
+    'Uberaba': {'lat': -19.7475, 'lon': -47.9317, 'estado': 'MG'}
 }
 
-def remover_acentos(texto):
-    if pd.isna(texto):
-        return ""
-    nfkd = unicodedata.normalize('NFKD', str(texto))
-    return "".join([c for c in nfkd if not unicodedata.combining(c)]).strip().lower()
-
-dic_sem_acento = {remover_acentos(k): k for k in coordenadas_unidades.keys()}
-lista_chaves_limpas = list(dic_sem_acento.keys())
-
-def limpar_e_mapear_unidade(nome):
-    if pd.isna(nome):
-        return "Desconhecido"
-    s = str(nome).strip()
-    if s.lower().startswith("una -"):
-        s = s[5:].strip()
-    
-    s_limpo = remover_acentos(s)
-    match, score, _ = process.extractOne(s_limpo, lista_chaves_limpas, scorer=fuzz.WRatio)
-    if score >= 40:
-        return dic_sem_acento[match]
-    return s
-
+# Processamento infalível da base de disponibilidades
 if not df_disp.empty:
-    coluna_unidade_alvo = None
-    for col in df_disp.columns:
-        if any(termo in str(col).lower() for termo in ['unidade', 'campus', 'polo', 'local']):
-            coluna_unidade_alvo = col
-            break
-    if not coluna_unidade_alvo:
-        coluna_unidade_alvo = df_disp.columns[0]
+    coluna_unidade = next((col for col in df_disp.columns if any(t in str(col).lower() for t in ['unidade', 'campus', 'polo', 'local'])), df_disp.columns[0])
+    coluna_prof = next((col for col in df_disp.columns if any(t in str(col).lower() for t in ['professor', 'docente', 'nome', 'id', 'codigo', 'chave'])), df_disp.columns[1] if len(df_disp.columns) > 1 else df_disp.columns[0])
 
-    coluna_prof_alvo = None
-    for col in df_disp.columns:
-        if any(termo in str(col).lower() for termo in ['professor', 'docente', 'nome', 'id', 'codigo']):
-            coluna_prof_alvo = col
-            break
-    if not coluna_prof_alvo:
-        coluna_prof_alvo = df_disp.columns[1] if len(df_disp.columns) > 1 else df_disp.columns[0]
+    df_f = df_disp.copy()
+    
+    # Mapeador direto por correspondência sem acentos e ignorando prefixos
+    def mapear_unidade_exata(val):
+        s = remover_acentos(val)
+        if s.startswith("una -"):
+            s = s[5:].strip()
+        
+        for nome_oficial in coordenadas_unidades.keys():
+            nome_limpo = remover_acentos(nome_oficial)
+            if nome_limpo in s:
+                return nome_oficial
+        return None
 
-    df_disp_presencial = df_disp.copy()
-    df_disp_presencial['Unidade_Padronizada'] = df_disp_presencial[coluna_unidade_alvo].apply(limpar_e_mapear_unidade)
+    df_f['Unidade_Valida'] = df_f[coluna_unidade].apply(mapear_unidade_exata)
+    df_f = df_f.dropna(subset=['Unidade_Valida'])
 
-    # Cria uma chave sem acento na base agrupada para garantir o match exato
-    df_disp_presencial['Chave_Match'] = df_disp_presencial['Unidade_Padronizada'].apply(remover_acentos)
-
-    df_agrupado = df_disp_presencial.groupby('Chave_Match').agg(
-        Total_Disponibilidades=(coluna_prof_alvo, 'count'),
-        Professores_Unicos=(coluna_prof_alvo, 'nunique')
+    df_agrupado = df_f.groupby('Unidade_Valida').agg(
+        Total_Disponibilidades=(coluna_prof, 'count'),
+        Professores_Unicos=(coluna_prof, 'nunique')
     ).reset_index()
 else:
-    df_agrupado = pd.DataFrame(columns=['Chave_Match', 'Total_Disponibilidades', 'Professores_Unicos'])
+    df_agrupado = pd.DataFrame(columns=['Unidade_Valida', 'Total_Disponibilidades', 'Professores_Unicos'])
 
-# Monta o consolidado final usando a mesma chave sem acentos para o cruzamento
+# Monta rigorosamente as 17 unidades oficiais
 dados_finais = []
 for nome, info in coordenadas_unidades.items():
-    chave_busca = remover_acentos(nome)
-    row_dados = df_agrupado[df_agrupado['Chave_Match'] == chave_busca]
-    
+    row_dados = df_agrupado[df_agrupado['Unidade_Valida'] == nome]
     total_disp = int(row_dados['Total_Disponibilidades'].values[0]) if not row_dados.empty else 0
     prof_unicos = int(row_dados['Professores_Unicos'].values[0]) if not row_dados.empty else 0
     
@@ -130,7 +104,7 @@ for nome, info in coordenadas_unidades.items():
 
 df_map_resumo = pd.DataFrame(dados_finais)
 
-# Métricas Executivas
+# Métricas Executivas Travadas Exatamente em 17
 c1, c2, c3 = st.columns(3)
 c1.metric("🏫 Campi Presenciais Mapeados", len(df_map_resumo))
 c2.metric("📌 Total de Vagas nos Polos Físicos", int(df_map_resumo['Total_Disponibilidades'].sum()))
