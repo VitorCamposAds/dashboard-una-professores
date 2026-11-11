@@ -33,7 +33,6 @@ titulacoes_disponiveis = sorted([str(x) for x in df_prof['Titulacao'].dropna().u
 titulacao_selecionada = st.sidebar.multiselect("Filtrar por Titulação:", titulacoes_disponiveis, default=titulacoes_disponiveis, key="tit_p1")
 df_prof_filtrado = df_prof[df_prof['Titulacao'].astype(str).isin(titulacao_selecionada)]
 
-# Métricas reais (sem dados fictícios)
 c1, c2, c3 = st.columns(3)
 c1.metric("👨‍🏫 Total Professores Únicos", len(df_prof_filtrado))
 c2.metric("🎓 Mestres e Doutores", len(df_prof_filtrado[df_prof_filtrado['Titulacao'].isin(['Mestrado', 'Doutorado', 'Pós-Doutorado'])]))
@@ -57,6 +56,25 @@ with col2:
     fig_form = px.bar(df_form, x='Total', y='Formacao', orientation='h', text='Total', color='Total', color_continuous_scale=['#B22222', '#DC143C'])
     fig_form.update_layout(yaxis={'categoryorder':'total ascending'}, plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)')
     st.plotly_chart(fig_form, use_container_width=True)
+
+# ---- NOVO Bloco Adicionado sem apagar nada ----
+st.markdown("---")
+st.subheader("🍩 Proporção Estratégica do Corpo Docente por Titulação")
+col_n1, col_n2 = st.columns([2, 1])
+with col_n1:
+    fig_donut = px.pie(df_prof_filtrado, names='Titulacao', hole=0.6, color_discrete_sequence=['#C8102E', '#FF4D4D', '#8B0000', '#E63946', '#5C0601'])
+    fig_donut.update_layout(plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', legend=dict(orientation="h", yanchor="bottom", y=-0.2, xanchor="center", x=0.5))
+    st.plotly_chart(fig_donut, use_container_width=True)
+with col_n2:
+    st.markdown("""
+        <div style="background-color: white; padding: 20px; border-radius: 10px; border-left: 5px solid #C8102E; height: 100%;">
+            <h4>💡 Insights de Titulação</h4>
+            <p style="color: #64748b; font-size: 0.9rem;">
+                Análise percentual para suporte direto ao cumprimento das exigências de qualificação do corpo docente frente aos indicadores do MEC.
+            </p>
+        </div>
+    """, unsafe_allow_html=True)
+# -----------------------------------------------
 
 st.markdown("---")
 st.subheader("🔬 Análise Avançada: Cruzamento de Titulação vs Principais Formações")
