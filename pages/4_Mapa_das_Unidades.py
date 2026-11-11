@@ -28,7 +28,7 @@ def carregar_dados():
 
 df_rh, df_ader, df_prof, df_disp = carregar_dados()
 
-# Dicionário exato com as 17 unidades oficiais da rede
+# Dicionário com todas as unidades oficiais da rede (mapeando exatamente pelos nomes que vêm na planilha)
 coordenadas_unidades = {
     'Aimorés': {'lat': -19.9245, 'lon': -43.9450, 'estado': 'MG'},
     'Liberdade': {'lat': -19.9281, 'lon': -43.9383, 'estado': 'MG'},
@@ -38,49 +38,70 @@ coordenadas_unidades = {
     'Contagem': {'lat': -19.9315, 'lon': -44.0539, 'estado': 'MG'},
     'Betim': {'lat': -19.9676, 'lon': -44.1983, 'estado': 'MG'},
     'Buritis': {'lat': -19.9482, 'lon': -43.9654, 'estado': 'MG'},
+    'Cristiano Machado': {'lat': -19.8752, 'lon': -43.9351, 'estado': 'MG'},
     'Sete Lagoas': {'lat': -19.4627, 'lon': -44.2486, 'estado': 'MG'},
+    'Conselheiro Lafaiete': {'lat': -20.6558, 'lon': -43.7850, 'estado': 'MG'},
+    'Itabira': {'lat': -19.6194, 'lon': -43.2253, 'estado': 'MG'},
     'Cataguases': {'lat': -21.3886, 'lon': -42.6978, 'estado': 'MG'},
     'Pouso Alegre': {'lat': -22.2300, 'lon': -45.9356, 'estado': 'MG'},
+    'Bom Despacho': {'lat': -19.7397, 'lon': -45.2536, 'estado': 'MG'},
+    'Divinópolis': {'lat': -20.1463, 'lon': -44.8906, 'estado': 'MG'},
     'Uberlândia': {'lat': -18.9186, 'lon': -48.2772, 'estado': 'MG'},
     'Uberaba': {'lat': -19.7475, 'lon': -47.9317, 'estado': 'MG'},
+    'Catalão': {'lat': -18.1656, 'lon': -47.9467, 'estado': 'GO'},
     'Goiânia': {'lat': -16.6864, 'lon': -49.2643, 'estado': 'GO'},
     'Jataí': {'lat': -17.8814, 'lon': -51.7144, 'estado': 'GO'},
     'Itumbiara': {'lat': -18.4219, 'lon': -49.2153, 'estado': 'GO'},
     'Rio Verde': {'lat': -17.7944, 'lon': -50.9192, 'estado': 'GO'}
 }
 
-# Cria o DataFrame base com as exatas 17 unidades
+# Função auxiliar para limpar e padronizar o nome da unidade (removendo "UNA -", espaços e acentos se necessário)
+def limpar_nome_unidade(nome):
+    if pd.isna(nome):
+        return ""
+    s = str(nome).strip()
+    # Remove o prefixo "UNA -" case insensitive
+    if s.lower().startswith("una -"):
+        s = s[5:].strip()
+    return s
+
+# Cria o DataFrame base com as unidades oficiais limpas
 df_base_unidades = pd.DataFrame([
-    {'Unidade': k, 'Unidade_Key': k.strip().lower(), 'lat': v['lat'], 'lon': v['lon'], 'Estado': v['estado']} 
+    {'Unidade_Original': k, 'Unidade_Key': k.strip().lower(), 'lat': v['lat'], 'lon': v['lon'], 'Estado': v['estado']} 
     for k, v in coordenadas_unidades.items()
 ])
 
 if 'Unidade' in df_disp.columns:
+    # Filtra fora EAD / Digital
     df_disp_presencial = df_disp[
         ~df_disp['Unidade'].astype(str).str.contains("digital|ead|virtual|online", case=False, na=False)
     ].copy()
 
-    # Normaliza a chave de unidade na planilha para bater certinho no cruzamento
-    df_disp_presencial['Unidade_Key'] = df_disp_presencial['Unidade'].astype(str).str.strip().str.lower()
+    # Aplica a limpeza no nome da unidade que vem da planilha
+    df_disp_presencial['Unidade_Limpa'] = df_disp_presencial['Unidade'].apply(limpar_nome_unidade)
+    df_disp_presencial['Unidade_Key'] = df_disp_presencial['Unidade_Limpa'].str.lower()
 
     df_agrupado = df_disp_presencial.groupby('Unidade_Key').agg(
         Total_Disponibilidades=('Professor', 'count'),
         Professores_Unicos=('Professor', 'nunique')
     ).reset_index()
 
-    # Faz o merge usando a chave normalizada
+    # Faz o merge com a base oficial
     df_map_resumo = pd.merge(df_base_unidades, df_agrupado, on='Unidade_Key', how='left')
     
+    # Mantém o nome amigável para exibição com o prefixo UNA - se o usuário preferir, ou usa o original
+    df_map_resumo['Unidade'] = "UNA - " + df_map_resumo['Unidade_Original']
     df_map_resumo['Total_Disponibilidades'] = df_map_resumo['Total_Disponibilidades'].fillna(0).astype(int)
     df_map_resumo['Professores_Unicos'] = df_map_resumo['Professores_Unicos'].fillna(0).astype(int)
 else:
     df_map_resumo = df_base_unidades.copy()
+    df_map_resumo['Unidade'] = "UNA - " + df_map_resumo['Unidade_Original']
     df_map_resumo['Total_Disponibilidades'] = 0
     df_map_resumo['Professores_Unicos'] = 0
 
-# Força a contagem para exibir rigorosamente as 17 unidades oficiais na métrica
+# Métricas Executivas atualizadas para refletir o total exato de unidades cadastradas
 c1, c2, c3 = st.columns(3)
-c1.metric("🏫 Campi Presenciais Mapeados", len(df_base_unidades))
+c1.metric("🏫 Campi Presenciais Mapeados", len(df_map_resumo))
 c2.metric("📌 Total de Vagas nos Polos Físicos", int(df_map_resumo['Total_Disponibilidades'].sum()))
 c3.metric("🌍 Estados Abrangidos", df_map_resumo['Estado'].nunique())
 
