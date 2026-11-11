@@ -12,7 +12,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 st.title("📊 Visão Geral: Corpo Docente & Indicadores de RH")
-st.markdown("Monitoramento integrado do quadro de professores, titulações acadêmicas, tempo de casa e profundidade de formação.")
+st.markdown("Monitoramento integrado do quadro de professores, titulações acadêmicas e profundidade de formação.")
 st.markdown("---")
 
 @st.cache_data
@@ -33,7 +33,7 @@ titulacoes_disponiveis = sorted([str(x) for x in df_prof['Titulacao'].dropna().u
 titulacao_selecionada = st.sidebar.multiselect("Filtrar por Titulação:", titulacoes_disponiveis, default=titulacoes_disponiveis, key="tit_p1")
 df_prof_filtrado = df_prof[df_prof['Titulacao'].astype(str).isin(titulacao_selecionada)]
 
-# Métricas reais corrigidas (sem porcentagens falsas)
+# Métricas reais (sem dados fictícios)
 c1, c2, c3 = st.columns(3)
 c1.metric("👨‍🏫 Total Professores Únicos", len(df_prof_filtrado))
 c2.metric("🎓 Mestres e Doutores", len(df_prof_filtrado[df_prof_filtrado['Titulacao'].isin(['Mestrado', 'Doutorado', 'Pós-Doutorado'])]))
