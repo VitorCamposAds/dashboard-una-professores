@@ -70,12 +70,8 @@ if 'Unidade' in df_disp.columns:
     df_map_resumo['Estado'] = df_map_resumo['Unidade'].apply(lambda x: buscar_coord(x, 'estado') or 'Outros')
 
     df_map_resumo = df_map_resumo.dropna(subset=['lat', 'lon'])
-    
-    # Multiplicador para o tamanho do círculo ficar visível e proporcional no PyDeck
-    max_val = df_map_resumo['Total_Disponibilidades'].max() if not df_map_resumo.empty else 1
-    df_map_resumo['radius'] = df_map_resumo['Total_Disponibilidades'].apply(lambda x: int((x / max_val) * 35000 + 8000))
 else:
-    df_map_resumo = pd.DataFrame(columns=['Unidade', 'Total_Disponibilidades', 'Professores_Unicos', 'lat', 'lon', 'Estado', 'radius'])
+    df_map_resumo = pd.DataFrame(columns=['Unidade', 'Total_Disponibilidades', 'Professores_Unicos', 'lat', 'lon', 'Estado'])
 
 c1, c2, c3 = st.columns(3)
 c1.metric("🏫 Campi Presenciais Mapeados", len(df_map_resumo))
@@ -93,20 +89,22 @@ if busca_mapa and busca_mapa.strip() != "":
 if not df_tabela_mapa.empty:
     st.subheader("📍 Mapa Interativo dos Campi (Passe o mouse para ver os dados)")
     
-    # Configuração da Camada PyDeck (Círculos vermelhos UNA #C8102E com tooltip nativo robusto)
+    # Cálculo para deixar as bolinhas menores e proporcionais
+    max_val = df_tabela_mapa['Total_Disponibilidades'].max() if not df_tabela_mapa.empty else 1
+    df_tabela_mapa['radius'] = df_tabela_mapa['Total_Disponibilidades'].apply(lambda x: int((x / max_val) * 12000 + 3000))
+
     layer = pdk.Layer(
         "ScatterplotLayer",
         data=df_tabela_mapa,
         get_position=["lon", "lat"],
         get_radius="radius",
-        get_fill_color=[200, 16, 46, 180],  # Vermelho oficial UNA com transparência
+        get_fill_color=[200, 16, 46, 200],  # Vermelho UNA
         get_line_color=[255, 255, 255],
-        line_width_min_pixels=2,
+        line_width_min_pixels=1,
         pickable=True,
         auto_highlight=True,
     )
 
-    # Centralização automática em Minas/Goiás
     view_state = pdk.ViewState(
         latitude=-18.5,
         longitude=-45.0,
@@ -117,6 +115,7 @@ if not df_tabela_mapa.empty:
     r = pdk.Deck(
         layers=[layer],
         initial_view_state=view_state,
+        map_style="light",  # Fundo claro limpo (adeus tela preta)
         tooltip={
             "html": "<b>Unidade:</b> {Unidade}<br/><b>Estado:</b> {Estado}<br/><b>Total de Horários:</b> {Total_Disponibilidades}<br/><b>Professores Únicos:</b> {Professores_Unicos}",
             "style": {"backgroundColor": "#C8102E", "color": "white", "fontFamily": "sans-serif", "padding": "10px"}
