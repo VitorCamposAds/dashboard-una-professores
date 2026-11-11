@@ -14,7 +14,7 @@ st.markdown("""
         
         .hero-banner {
             background: linear-gradient(135deg, #C8102E 0%, #900B1F 100%);
-            padding: 45px;
+            padding: 40px;
             border-radius: 16px;
             color: white;
             box-shadow: 0 10px 25px rgba(200, 16, 46, 0.2);
@@ -31,6 +31,10 @@ st.markdown("""
         h1, h2, h3 { color: #1e293b; font-family: 'Inter', sans-serif; }
     </style>
 """, unsafe_allow_html=True)
+
+# Exibe a logomarca oficial da UNA na barra lateral ou no topo (ajuste o width conforme preferir)
+st.sidebar.image("logo_una.png", width=180)
+st.sidebar.markdown("---")
 
 st.markdown("""
     <div class="hero-banner">
