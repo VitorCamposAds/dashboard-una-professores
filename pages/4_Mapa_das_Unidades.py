@@ -28,7 +28,7 @@ def carregar_dados():
 
 df_rh, df_ader, df_prof, df_disp = carregar_dados()
 
-# Dicionário mestre com todas as unidades oficiais físicas (MG e GO)
+# Dicionário exato com as 17 unidades oficiais da rede
 coordenadas_unidades = {
     'Aimorés': {'lat': -19.9245, 'lon': -43.9450, 'estado': 'MG'},
     'Liberdade': {'lat': -19.9281, 'lon': -43.9383, 'estado': 'MG'},
@@ -38,8 +38,6 @@ coordenadas_unidades = {
     'Contagem': {'lat': -19.9315, 'lon': -44.0539, 'estado': 'MG'},
     'Betim': {'lat': -19.9676, 'lon': -44.1983, 'estado': 'MG'},
     'Buritis': {'lat': -19.9482, 'lon': -43.9654, 'estado': 'MG'},
-    'Horto': {'lat': -19.9102, 'lon': -43.9180, 'estado': 'MG'},
-    'Justinópolis': {'lat': -19.7891, 'lon': -44.0753, 'estado': 'MG'},
     'Sete Lagoas': {'lat': -19.4627, 'lon': -44.2486, 'estado': 'MG'},
     'Cataguases': {'lat': -21.3886, 'lon': -42.6978, 'estado': 'MG'},
     'Pouso Alegre': {'lat': -22.2300, 'lon': -45.9356, 'estado': 'MG'},
@@ -51,9 +49,9 @@ coordenadas_unidades = {
     'Rio Verde': {'lat': -17.7944, 'lon': -50.9192, 'estado': 'GO'}
 }
 
-# Cria um DataFrame oficial com base nas unidades mapeadas acima para garantir que todas apareçam
+# Cria o DataFrame base com as exatas 17 unidades
 df_base_unidades = pd.DataFrame([
-    {'Unidade': k, 'lat': v['lat'], 'lon': v['lon'], 'Estado': v['estado']} 
+    {'Unidade': k, 'Unidade_Key': k.strip().lower(), 'lat': v['lat'], 'lon': v['lon'], 'Estado': v['estado']} 
     for k, v in coordenadas_unidades.items()
 ])
 
@@ -62,16 +60,17 @@ if 'Unidade' in df_disp.columns:
         ~df_disp['Unidade'].astype(str).str.contains("digital|ead|virtual|online", case=False, na=False)
     ].copy()
 
-    # Agrupa os dados reais da planilha
-    df_agrupado = df_disp_presencial.groupby('Unidade').agg(
+    # Normaliza a chave de unidade na planilha para bater certinho no cruzamento
+    df_disp_presencial['Unidade_Key'] = df_disp_presencial['Unidade'].astype(str).str.strip().str.lower()
+
+    df_agrupado = df_disp_presencial.groupby('Unidade_Key').agg(
         Total_Disponibilidades=('Professor', 'count'),
         Professores_Unicos=('Professor', 'nunique')
     ).reset_index()
 
-    # Faz o merge à esquerda com a base oficial de unidades para forçar a exibição de todas
-    df_map_resumo = pd.merge(df_base_unidades, df_agrupado, on='Unidade', how='left')
+    # Faz o merge usando a chave normalizada
+    df_map_resumo = pd.merge(df_base_unidades, df_agrupado, on='Unidade_Key', how='left')
     
-    # Preenche com 0 os campi que não possuem lançamentos na planilha de disponibilidades
     df_map_resumo['Total_Disponibilidades'] = df_map_resumo['Total_Disponibilidades'].fillna(0).astype(int)
     df_map_resumo['Professores_Unicos'] = df_map_resumo['Professores_Unicos'].fillna(0).astype(int)
 else:
@@ -79,10 +78,11 @@ else:
     df_map_resumo['Total_Disponibilidades'] = 0
     df_map_resumo['Professores_Unicos'] = 0
 
+# Força a contagem para exibir rigorosamente as 17 unidades oficiais na métrica
 c1, c2, c3 = st.columns(3)
-c1.metric("🏫 Campi Presenciais Mapeados", len(df_map_resumo))
-c2.metric("📌 Total de Vagas nos Polos Físicos", int(df_map_resumo['Total_Disponibilidades'].sum()) if not df_map_resumo.empty else 0)
-c3.metric("🌍 Estados Abrangidos", df_map_resumo['Estado'].nunique() if not df_map_resumo.empty else 0)
+c1.metric("🏫 Campi Presenciais Mapeados", len(df_base_unidades))
+c2.metric("📌 Total de Vagas nos Polos Físicos", int(df_map_resumo['Total_Disponibilidades'].sum()))
+c3.metric("🌍 Estados Abrangidos", df_map_resumo['Estado'].nunique())
 
 st.markdown("##")
 
@@ -95,7 +95,6 @@ if busca_mapa and busca_mapa.strip() != "":
 if not df_tabela_mapa.empty:
     st.subheader("📍 Mapa Interativo dos Campi (Passe o mouse para ver os dados)")
     
-    # Bolinhas discretas e proporcionais
     max_val = df_tabela_mapa['Total_Disponibilidades'].max()
     max_val = max_val if max_val > 0 else 1
     df_tabela_mapa['radius'] = df_tabela_mapa['Total_Disponibilidades'].apply(lambda x: int((x / max_val) * 2500 + 1000) if x > 0 else 800)
@@ -122,7 +121,7 @@ if not df_tabela_mapa.empty:
     r = pdk.Deck(
         layers=[layer],
         initial_view_state=view_state,
-        map_style="light",  # Fundo claro limpo
+        map_style="light",
         tooltip={
             "html": "<b>Unidade:</b> {Unidade}<br/><b>Estado:</b> {Estado}<br/><b>Total de Horários:</b> {Total_Disponibilidades}<br/><b>Professores Únicos:</b> {Professores_Unicos}",
             "style": {"backgroundColor": "#C8102E", "color": "white", "fontFamily": "sans-serif", "padding": "10px"}
