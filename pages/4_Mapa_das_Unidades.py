@@ -28,9 +28,8 @@ def carregar_dados():
 
 df_rh, df_ader, df_prof, df_disp = carregar_dados()
 
-# Dicionário robusto de coordenadas (Minas Gerais + Goiás + Outros polos presenciais)
+# Dicionário de coordenadas
 coordenadas_unidades = {
-    # Belo Horizonte e Região Metropolitana (MG)
     'Aimorés': {'lat': -19.9245, 'lon': -43.9450, 'estado': 'MG'},
     'Liberdade': {'lat': -19.9281, 'lon': -43.9383, 'estado': 'MG'},
     'Centro': {'lat': -19.9213, 'lon': -43.9388, 'estado': 'MG'},
@@ -39,15 +38,11 @@ coordenadas_unidades = {
     'Contagem': {'lat': -19.9315, 'lon': -44.0539, 'estado': 'MG'},
     'Betim': {'lat': -19.9676, 'lon': -44.1983, 'estado': 'MG'},
     'Buritis': {'lat': -19.9482, 'lon': -43.9654, 'estado': 'MG'},
-    
-    # Interior de Minas Gerais (MG)
     'Sete Lagoas': {'lat': -19.4627, 'lon': -44.2486, 'estado': 'MG'},
     'Cataguases': {'lat': -21.3886, 'lon': -42.6978, 'estado': 'MG'},
     'Pouso Alegre': {'lat': -22.2300, 'lon': -45.9356, 'estado': 'MG'},
     'Uberlândia': {'lat': -18.9186, 'lon': -48.2772, 'estado': 'MG'},
     'Uberaba': {'lat': -19.7475, 'lon': -47.9317, 'estado': 'MG'},
-    
-    # Estado de Goiás (GO)
     'Goiânia': {'lat': -16.6864, 'lon': -49.2643, 'estado': 'GO'},
     'Jataí': {'lat': -17.8814, 'lon': -51.7144, 'estado': 'GO'},
     'Itumbiara': {'lat': -18.4219, 'lon': -49.2153, 'estado': 'GO'},
@@ -55,7 +50,6 @@ coordenadas_unidades = {
 }
 
 if 'Unidade' in df_disp.columns:
-    # Exclui termos EAD/Digital
     df_disp_presencial = df_disp[
         ~df_disp['Unidade'].astype(str).str.contains("digital|ead|virtual|online", case=False, na=False)
     ].copy()
@@ -79,7 +73,6 @@ if 'Unidade' in df_disp.columns:
 else:
     df_map_resumo = pd.DataFrame(columns=['Unidade', 'Total_Disponibilidades', 'Professores_Unicos', 'lat', 'lon', 'Estado'])
 
-# Métricas Executivas
 c1, c2, c3 = st.columns(3)
 c1.metric("🏫 Campi Presenciais Mapeados", len(df_map_resumo))
 c2.metric("📌 Total de Vagas nos Polos Físicos", int(df_map_resumo['Total_Disponibilidades'].sum()) if not df_map_resumo.empty else 0)
@@ -87,18 +80,17 @@ c3.metric("🌍 Estados Abrangidos", df_map_resumo['Estado'].nunique() if not df
 
 st.markdown("##")
 
-# Filtro de busca textual
 busca_mapa = st.text_input("🔍 Filtrar unidade no mapa e na tabela:", key="busca_mapa", placeholder="Digite o nome da unidade...")
 df_tabela_mapa = df_map_resumo.copy()
 if busca_mapa and busca_mapa.strip() != "":
     mask = df_tabela_mapa.astype(str).apply(lambda x: x.str.contains(busca_mapa, case=False, na=False)).any(axis=1)
     df_tabela_mapa = df_tabela_mapa[mask]
 
-# Exibição do Mapa Interativo usando Scatter Geo (100% estável no Streamlit Cloud sem precisar de token Mapbox)
 if not df_tabela_mapa.empty:
     st.subheader("📍 Mapa Interativo dos Campi (Passe o mouse para ver os dados)")
     
-    fig_mapa = px.scatter_geo(
+    # Usando style 'carto-positron' (fundo limpo, profissional, sem molduras toscas)
+    fig_mapa = px.scatter_mapbox(
         df_tabela_mapa,
         lat="lat",
         lon="lon",
@@ -112,25 +104,26 @@ if not df_tabela_mapa.empty:
             "Professores_Unicos": True,
             "Estado": True
         },
-        projection="mercator",
-        height=500,
+        zoom=6.5,
+        center={"lat": -18.5, "lon": -45.0},
+        height=550,
         color_discrete_sequence=['#C8102E', '#E63946', '#8B0000', '#5C0601']
     )
     
-    fig_mapa.update_geos(
-        fitbounds="locations",
-        visible=True,
-        resolution=50,
-        showcountries=True,
-        countrycolor="white",
-        showsubunits=True,
-        subunitcolor="#ddd"
-    )
-    
     fig_mapa.update_layout(
+        mapbox_style="carto-positron",
         margin=dict(l=0, r=0, t=0, b=0),
         paper_bgcolor='rgba(0,0,0,0)',
-        plot_bgcolor='rgba(0,0,0,0)'
+        plot_bgcolor='rgba(0,0,0,0)',
+        legend=dict(
+            title="Estado",
+            orientation="h",
+            yanchor="bottom",
+            y=0.02,
+            xanchor="left",
+            x=0.02,
+            bgcolor="rgba(255,255,255,0.8)"
+        )
     )
     
     st.plotly_chart(fig_mapa, use_container_width=True)
