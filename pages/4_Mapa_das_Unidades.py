@@ -89,9 +89,9 @@ if busca_mapa and busca_mapa.strip() != "":
 if not df_tabela_mapa.empty:
     st.subheader("📍 Mapa Interativo dos Campi (Passe o mouse para ver os dados)")
     
-    # Cálculo para deixar as bolinhas menores e proporcionais
+    # Raio bem menor e contido (máximo de 3500 metros em vez de 12000)
     max_val = df_tabela_mapa['Total_Disponibilidades'].max() if not df_tabela_mapa.empty else 1
-    df_tabela_mapa['radius'] = df_tabela_mapa['Total_Disponibilidades'].apply(lambda x: int((x / max_val) * 12000 + 3000))
+    df_tabela_mapa['radius'] = df_tabela_mapa['Total_Disponibilidades'].apply(lambda x: int((x / max_val) * 2500 + 1000))
 
     layer = pdk.Layer(
         "ScatterplotLayer",
@@ -115,7 +115,7 @@ if not df_tabela_mapa.empty:
     r = pdk.Deck(
         layers=[layer],
         initial_view_state=view_state,
-        map_style="light",  # Fundo claro limpo (adeus tela preta)
+        map_style="light",  # Fundo claro limpo
         tooltip={
             "html": "<b>Unidade:</b> {Unidade}<br/><b>Estado:</b> {Estado}<br/><b>Total de Horários:</b> {Total_Disponibilidades}<br/><b>Professores Únicos:</b> {Professores_Unicos}",
             "style": {"backgroundColor": "#C8102E", "color": "white", "fontFamily": "sans-serif", "padding": "10px"}
