@@ -56,18 +56,23 @@ coordenadas_unidades = {
     'Uberaba': {'lat': -19.7475, 'lon': -47.9317, 'estado': 'MG'}
 }
 
-# Processamento infalível da base de disponibilidades
 if not df_disp.empty:
-    coluna_unidade = next((col for col in df_disp.columns if any(t in str(col).lower() for t in ['unidade', 'campus', 'polo', 'local'])), df_disp.columns[0])
-    coluna_prof = next((col for col in df_disp.columns if any(t in str(col).lower() for t in ['professor', 'docente', 'nome', 'id', 'codigo', 'chave'])), df_disp.columns[1] if len(df_disp.columns) > 1 else df_disp.columns[0])
+    # Força o uso estrito das colunas oficiais da base de disponibilidades
+    coluna_unidade = 'Unidade' if 'Unidade' in df_disp.columns else df_disp.columns[0]
+    coluna_prof = 'Professor' if 'Professor' in df_disp.columns else df_disp.columns[1]
 
     df_f = df_disp.copy()
     
-    # Mapeador direto por correspondência sem acentos e ignorando prefixos
     def mapear_unidade_exata(val):
         s = remover_acentos(val)
         if s.startswith("una -"):
             s = s[5:].strip()
+        
+        # Regra direta blindada para as cidades críticas
+        if 'uberaba' in s:
+            return 'Uberaba'
+        if 'uberlandia' in s:
+            return 'Uberlândia'
         
         for nome_oficial in coordenadas_unidades.keys():
             nome_limpo = remover_acentos(nome_oficial)
@@ -85,7 +90,7 @@ if not df_disp.empty:
 else:
     df_agrupado = pd.DataFrame(columns=['Unidade_Valida', 'Total_Disponibilidades', 'Professores_Unicos'])
 
-# Monta rigorosamente as 17 unidades oficiais
+# Consolida rigorosamente as 17 unidades oficiais
 dados_finais = []
 for nome, info in coordenadas_unidades.items():
     row_dados = df_agrupado[df_agrupado['Unidade_Valida'] == nome]
