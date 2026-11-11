@@ -56,19 +56,20 @@ coordenadas_unidades = {
     'Uberaba': {'lat': -19.7475, 'lon': -47.9317, 'estado': 'MG'}
 }
 
-if not df_disp.empty:
-    # Força o uso estrito das colunas oficiais da base de disponibilidades
-    coluna_unidade = 'Unidade' if 'Unidade' in df_disp.columns else df_disp.columns[0]
-    coluna_prof = 'Professor' if 'Professor' in df_disp.columns else df_disp.columns[1]
+# PROCESSAMENTO USANDO ESTRITAMENTE A ABA 'Base_RH' E A COLUNA 'NOME FILIAL'
+if not df_rh.empty:
+    coluna_filial = 'NOME FILIAL' if 'NOME FILIAL' in df_rh.columns else df_rh.columns[0]
+    
+    # Descobre coluna de identificação do professor na Base_RH
+    coluna_prof_rh = next((col for col in df_rh.columns if any(t in str(col).lower() for t in ['professor', 'docente', 'nome', 'id', 'matricula', 'codigo'])), df_rh.columns[1] if len(df_rh.columns) > 1 else df_rh.columns[0])
 
-    df_f = df_disp.copy()
+    df_f = df_rh.copy()
     
     def mapear_unidade_exata(val):
         s = remover_acentos(val)
         if s.startswith("una -"):
             s = s[5:].strip()
         
-        # Regra direta blindada para as cidades críticas
         if 'uberaba' in s:
             return 'Uberaba'
         if 'uberlandia' in s:
@@ -80,17 +81,17 @@ if not df_disp.empty:
                 return nome_oficial
         return None
 
-    df_f['Unidade_Valida'] = df_f[coluna_unidade].apply(mapear_unidade_exata)
+    df_f['Unidade_Valida'] = df_f[coluna_filial].apply(mapear_unidade_exata)
     df_f = df_f.dropna(subset=['Unidade_Valida'])
 
     df_agrupado = df_f.groupby('Unidade_Valida').agg(
-        Total_Disponibilidades=(coluna_prof, 'count'),
-        Professores_Unicos=(coluna_prof, 'nunique')
+        Total_Disponibilidades=(coluna_prof_rh, 'count'),
+        Professores_Unicos=(coluna_prof_rh, 'nunique')
     ).reset_index()
 else:
     df_agrupado = pd.DataFrame(columns=['Unidade_Valida', 'Total_Disponibilidades', 'Professores_Unicos'])
 
-# Consolida rigorosamente as 17 unidades oficiais
+# Consolida as 17 unidades oficiais
 dados_finais = []
 for nome, info in coordenadas_unidades.items():
     row_dados = df_agrupado[df_agrupado['Unidade_Valida'] == nome]
@@ -109,7 +110,7 @@ for nome, info in coordenadas_unidades.items():
 
 df_map_resumo = pd.DataFrame(dados_finais)
 
-# Métricas Executivas Travadas Exatamente em 17
+# Métricas Executivas Travadas em 17
 c1, c2, c3 = st.columns(3)
 c1.metric("🏫 Campi Presenciais Mapeados", len(df_map_resumo))
 c2.metric("📌 Total de Vagas nos Polos Físicos", int(df_map_resumo['Total_Disponibilidades'].sum()))
