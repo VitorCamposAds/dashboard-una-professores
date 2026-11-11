@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 
-st.set_page_config(page_title="Visão Geral & RH | UNA", page_icon="📊", layout="wide")
+st.set_page_config(page_title="Disponibilidades | UNA", page_icon="🕒", layout="wide")
 
 st.markdown("""
     <style>
@@ -11,8 +11,8 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-st.title("📊 Visão Geral: Corpo Docente & Indicadores de RH")
-st.markdown("Monitoramento integrado do quadro de professores, titulações acadêmicas, tempo de casa e profundidade de formação.")
+st.title("🕒 Matriz de Disponibilidades & Otimização de Turnos")
+st.markdown("Cruzamento avançado de horários, dias da semana, distribuição espacial por unidade acadêmica e gargalos de alocação.")
 st.markdown("---")
 
 @st.cache_data
@@ -28,54 +28,75 @@ def carregar_dados():
 
 df_rh, df_ader, df_prof, df_disp = carregar_dados()
 
-st.sidebar.header("🎛️ Filtros do Sistema")
-titulacoes_disponiveis = sorted([str(x) for x in df_prof['Titulacao'].dropna().unique()])
-titulacao_selecionada = st.sidebar.multiselect("Filtrar por Titulação:", titulacoes_disponiveis, default=titulacoes_disponiveis, key="tit_p1")
-df_prof_filtrado = df_prof[df_prof['Titulacao'].astype(str).isin(titulacao_selecionada)]
+st.sidebar.header("🎛️ Filtros de Disponibilidade")
+unidades_disponiveis = sorted([str(x) for x in df_disp['Unidade'].dropna().unique()])
+unidade_selecionada = st.sidebar.multiselect("Filtrar por Unidade(s):", unidades_disponiveis, default=unidades_disponiveis, key="uni_p3")
 
-c1, c2, c3, c4 = st.columns(4)
-c1.metric("👨‍🏫 Total Professores Únicos", len(df_prof_filtrado), delta="Base Sincronizada")
-c2.metric("🎓 Mestres e Doutores", len(df_prof_filtrado[df_prof_filtrado['Titulacao'].isin(['Mestrado', 'Doutorado', 'Pós-Doutorado'])]))
-c3.metric("📚 Aderências Ativas", len(df_ader))
-c4.metric("🏢 Colaboradores Base RH", len(df_rh))
+dias_disponiveis = sorted([str(x) for x in df_disp['Dia'].dropna().unique()])
+dia_selecionado = st.sidebar.multiselect("Filtrar por Dia:", dias_disponiveis, default=dias_disponiveis, key="dia_p3")
+
+df_disp_filtrado = df_disp[
+    df_disp['Unidade'].astype(str).isin(unidade_selecionada) & 
+    df_disp['Dia'].astype(str).isin(dia_selecionado)
+]
+
+c1, c2, c3 = st.columns(3)
+c1.metric("📌 Total de Horários Disponíveis", len(df_disp_filtrado))
+c2.metric("🏫 Unidades na Seleção", df_disp_filtrado['Unidade'].nunique())
+c3.metric("👨‍🏫 Professores Envolvidos", df_disp_filtrado['Professor'].nunique())
 
 st.markdown("##")
 col1, col2 = st.columns(2)
 
 with col1:
-    st.subheader("🎓 Distribuição por Titulação Acadêmica")
-    df_tit = df_prof_filtrado['Titulacao'].value_counts().reset_index()
-    df_tit.columns = ['Titulacao', 'Total']
-    fig_tit = px.bar(df_tit, x='Total', y='Titulacao', orientation='h', text='Total', color='Total', color_continuous_scale=['#8B0000', '#C8102E', '#FF4D4D'])
-    fig_tit.update_layout(yaxis={'categoryorder':'total ascending'}, plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)')
-    st.plotly_chart(fig_tit, use_container_width=True)
+    st.subheader("📍 Volume de Disponibilidades por Unidade")
+    df_uni = df_disp_filtrado['Unidade'].value_counts().reset_index()
+    df_uni.columns = ['Unidade', 'Total']
+    fig_uni = px.bar(df_uni, x='Total', y='Unidade', orientation='h', text='Total', color='Total', color_continuous_scale=['#8B0000', '#C8102E'])
+    fig_uni.update_layout(yaxis={'categoryorder':'total ascending'}, plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)')
+    st.plotly_chart(fig_uni, use_container_width=True)
 
 with col2:
-    st.subheader("📋 Top Formações Acadêmicas")
-    df_form = df_prof_filtrado['Formacao'].value_counts().reset_index().head(10)
-    df_form.columns = ['Formacao', 'Total']
-    fig_form = px.bar(df_form, x='Total', y='Formacao', orientation='h', text='Total', color='Total', color_continuous_scale=['#B22222', '#DC143C'])
-    fig_form.update_layout(yaxis={'categoryorder':'total ascending'}, plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)')
-    st.plotly_chart(fig_form, use_container_width=True)
+    st.subheader("📅 Disponibilidade por Dia da Semana")
+    dias_ordem = ['SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB']
+    fig_dias = px.histogram(df_disp_filtrado, x='Dia', category_orders={'Dia': dias_ordem}, color='Dia', color_discrete_sequence=['#C8102E', '#E63946', '#FF6B6B', '#D90429', '#8D0801', '#5C0601'])
+    fig_dias.update_layout(plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)')
+    st.plotly_chart(fig_dias, use_container_width=True)
+
+col3, col4 = st.columns(2)
+
+with col3:
+    st.subheader("⏰ Distribuição por Turno / Horário")
+    if 'Horario' in df_disp_filtrado.columns:
+        fig_horario = px.pie(df_disp_filtrado, names='Horario', hole=0.5, color_discrete_sequence=['#C8102E', '#FF4D4D', '#A30000'])
+        fig_horario.update_layout(plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)')
+        st.plotly_chart(fig_horario, use_container_width=True)
+
+with col4:
+    st.subheader("📊 Cruzamento Unidade x Período (Stack)")
+    if 'Horario' in df_disp_filtrado.columns and 'Unidade' in df_disp_filtrado.columns:
+        df_cruz = df_disp_filtrado.groupby(['Unidade', 'Horario']).size().reset_index(name='Total')
+        fig_cruz = px.bar(df_cruz, x='Unidade', y='Total', color='Horario', barmode='stack', color_discrete_sequence=['#C8102E', '#FF6B6B', '#5C0601'])
+        fig_cruz.update_layout(xaxis_tickangle=-45, plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)')
+        st.plotly_chart(fig_cruz, use_container_width=True)
 
 st.markdown("---")
-st.subheader("🔬 Análise Avançada: Cruzamento de Titulação vs Principais Formações")
-if 'Titulacao' in df_prof_filtrado.columns and 'Formacao' in df_prof_filtrado.columns:
-    df_cruz_rh = df_prof_filtrado.groupby(['Formacao', 'Titulacao']).size().reset_index(name='Total')
-    top_formacoes = df_prof_filtrado['Formacao'].value_counts().head(8).index
-    df_cruz_rh_top = df_cruz_rh[df_cruz_rh['Formacao'].isin(top_formacoes)]
-    
-    fig_cruz_rh = px.bar(df_cruz_rh_top, x='Total', y='Formacao', color='Titulacao', orientation='h', barmode='stack', color_discrete_sequence=['#C8102E', '#E63946', '#FF6B6B', '#5C0601'])
-    fig_cruz_rh.update_layout(plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', margin=dict(l=200, r=20, t=30, b=30))
-    st.plotly_chart(fig_cruz_rh, use_container_width=True)
+
+st.subheader("🔥 Matriz de Calor: Intensidade de Horários por Unidade e Dia")
+if 'Unidade' in df_disp_filtrado.columns and 'Dia' in df_disp_filtrado.columns:
+    df_heat = df_disp_filtrado.groupby(['Unidade', 'Dia']).size().reset_index(name='Total')
+    fig_heat = px.density_heatmap(df_heat, x='Dia', y='Unidade', z='Total', color_continuous_scale=['#ffffff', '#FF6B6B', '#C8102E', '#5C0601'], category_orders={'Dia': ['SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB']})
+    fig_heat.update_layout(plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)')
+    st.plotly_chart(fig_heat, use_container_width=True)
 
 st.markdown("---")
-st.subheader("📋 Detalhamento do Corpo Docente")
+st.subheader("📋 Registros Detalhados de Disponibilidades")
 
-busca_prof = st.text_input("🔍 Buscar professor por Nome ou Matrícula:", key="busca_p1", placeholder="Digite para filtrar ou apague para ver tudo...")
-df_tabela_prof = df_prof_filtrado.copy()
-if busca_prof and busca_prof.strip() != "":
-    mask = df_tabela_prof.astype(str).apply(lambda x: x.str.contains(busca_prof, case=False, na=False)).any(axis=1)
-    df_tabela_prof = df_tabela_prof[mask]
+# Campo de busca interativo na tabela
+busca_disp = st.text_input("🔍 Buscar por Professor ou Unidade:", key="busca_p3")
+df_tabela_disp = df_disp_filtrado.copy()
+if busca_disp:
+    mask = df_tabela_disp.astype(str).apply(lambda x: x.str.contains(busca_disp, case=False, na=False)).any(axis=1)
+    df_tabela_disp = df_tabela_disp[mask]
 
-st.dataframe(df_tabela_prof[['Matricula', 'Nome', 'Formacao', 'Titulacao', 'CurriculoLattes']], use_container_width=True, hide_index=True)
+st.dataframe(df_tabela_disp, use_container_width=True, hide_index=True)
