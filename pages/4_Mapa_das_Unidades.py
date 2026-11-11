@@ -56,7 +56,6 @@ coordenadas_unidades = {
     'Rio Verde': {'lat': -17.7944, 'lon': -50.9192, 'estado': 'GO'}
 }
 
-# Cria a lista de nomes oficiais para o Fuzzy Matching
 lista_nomes_oficiais = list(coordenadas_unidades.keys())
 
 def limpar_e_mapear_unidade(nome):
@@ -66,9 +65,8 @@ def limpar_e_mapear_unidade(nome):
     if s.lower().startswith("una -"):
         s = s[5:].strip()
     
-    # Usa rapidfuzz para encontrar a correspondência exata ou aproximada na lista oficial (ex: Uberlandia -> Uberlândia)
     match, score, _ = process.extractOne(s, lista_nomes_oficiais, scorer=fuzz.WRatio)
-    if score >= 70:  # Se houver boa similaridade, usa o nome oficial padronizado
+    if score >= 60:  # Tolerância ajustada para pegar qualquer variação
         return match
     return s
 
@@ -77,18 +75,19 @@ if 'Unidade' in df_disp.columns:
         ~df_disp['Unidade'].astype(str).str.contains("digital|ead|virtual|online", case=False, na=False)
     ].copy()
 
-    # Aplica o fuzzy matching inteligente em cada linha da planilha de disponibilidades
     df_disp_presencial['Unidade_Padronizada'] = df_disp_presencial['Unidade'].apply(limpar_e_mapear_unidade)
 
-    # Agrupa com base nos nomes oficiais limpos
+    # Descobre automaticamente qual coluna usar para contar (procura por 'professor', 'id' ou usa a primeira coluna)
+    col_contagem = 'Professor' if 'Professor' in df_disp_presencial.columns else df_disp_presencial.columns[0]
+    col_prof = 'Professor' if 'Professor' in df_disp_presencial.columns else col_contagem
+
     df_agrupado = df_disp_presencial.groupby('Unidade_Padronizada').agg(
-        Total_Disponibilidades=('Professor', 'count'),
-        Professores_Unicos=('Professor', 'nunique')
+        Total_Disponibilidades=(col_contagem, 'count'),
+        Professores_Unicos=(col_prof, 'nunique')
     ).reset_index().rename(columns={'Unidade_Padronizada': 'Unidade_Oficial'})
 else:
     df_agrupado = pd.DataFrame(columns=['Unidade_Oficial', 'Total_Disponibilidades', 'Professores_Unicos'])
 
-# Monta o DataFrame final garantindo que todas as unidades oficiais constem na tela
 dados_finais = []
 for nome, info in coordenadas_unidades.items():
     row_dados = df_agrupado[df_agrupado['Unidade_Oficial'].str.lower() == nome.lower()]
@@ -107,7 +106,6 @@ for nome, info in coordenadas_unidades.items():
 
 df_map_resumo = pd.DataFrame(dados_finais)
 
-# Métricas Executivas
 c1, c2, c3 = st.columns(3)
 c1.metric("🏫 Campi Presenciais Mapeados", len(df_map_resumo))
 c2.metric("📌 Total de Vagas nos Polos Físicos", int(df_map_resumo['Total_Disponibilidades'].sum()))
