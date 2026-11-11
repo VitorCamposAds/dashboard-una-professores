@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+import plotly.express as px
 
 st.set_page_config(page_title="Mapa das Unidades | UNA", page_icon="🗺️", layout="wide")
 
@@ -27,6 +28,7 @@ def carregar_dados():
 
 df_rh, df_ader, df_prof, df_disp = carregar_dados()
 
+# Dicionário de coordenadas (Minas Gerais + Goiás)
 coordenadas_unidades = {
     'Aimorés': {'lat': -19.9245, 'lon': -43.9450, 'estado': 'MG'},
     'Liberdade': {'lat': -19.9281, 'lon': -43.9383, 'estado': 'MG'},
@@ -85,9 +87,46 @@ if busca_mapa and busca_mapa.strip() != "":
     df_tabela_mapa = df_tabela_mapa[mask]
 
 if not df_tabela_mapa.empty:
-    st.subheader("📍 Localização dos Polos Presenciais")
-    # st.map nativo do Streamlit (roda direto via Mapbox otimizado sem dar erro de atributo)
-    st.map(df_tabela_mapa, latitude='lat', longitude='lon', size='Total_Disponibilidades', zoom=6)
+    st.subheader("📍 Mapa Interativo dos Campi (Passe o mouse para ver os dados)")
+    
+    # Usando open-street-map (rodando 100% liso no Plotly sem precisar de chave de API externa)
+    fig_mapa = px.scatter_mapbox(
+        df_tabela_mapa,
+        lat="lat",
+        lon="lon",
+        size="Total_Disponibilidades",
+        color="Estado",
+        hover_name="Unidade",
+        hover_data={
+            "lat": False,
+            "lon": False,
+            "Total_Disponibilidades": True,
+            "Professores_Unicos": True,
+            "Estado": True
+        },
+        zoom=6,
+        center={"lat": -18.5, "lon": -45.0},
+        height=550,
+        color_discrete_sequence=['#C8102E', '#E63946', '#8B0000', '#5C0601']
+    )
+    
+    fig_mapa.update_layout(
+        mapbox_style="open-street-map",
+        margin=dict(l=0, r=0, t=0, b=0),
+        paper_bgcolor='rgba(0,0,0,0)',
+        plot_bgcolor='rgba(0,0,0,0)',
+        legend=dict(
+            title="Estado",
+            orientation="h",
+            yanchor="bottom",
+            y=0.02,
+            xanchor="left",
+            x=0.02,
+            bgcolor="rgba(255,255,255,0.8)"
+        )
+    )
+    
+    st.plotly_chart(fig_mapa, use_container_width=True)
 else:
     st.info("Nenhuma unidade física encontrada para os critérios informados.")
 
