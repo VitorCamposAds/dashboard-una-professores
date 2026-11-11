@@ -55,7 +55,7 @@ coordenadas_unidades = {
 }
 
 if 'Unidade' in df_disp.columns:
-    # Exclui termos como 'Digital', 'EAD' ou vazios para não plotar polos virtuais no mapa físico
+    # Exclui termos EAD/Digital
     df_disp_presencial = df_disp[
         ~df_disp['Unidade'].astype(str).str.contains("digital|ead|virtual|online", case=False, na=False)
     ].copy()
@@ -65,18 +65,16 @@ if 'Unidade' in df_disp.columns:
         Professores_Unicos=('Professor', 'nunique')
     ).reset_index()
 
-    # Função de matching inteligente de coordenadas
     def buscar_coord(unidade_str, tipo):
         for k, v in coordenadas_unidades.items():
             if k.lower() in str(unidade_str).lower():
                 return v[tipo]
-        return None  # Se não achar, retorna None para filtrar fora do mapa físico
+        return None
 
     df_map_resumo['lat'] = df_map_resumo['Unidade'].apply(lambda x: buscar_coord(x, 'lat'))
     df_map_resumo['lon'] = df_map_resumo['Unidade'].apply(lambda x: buscar_coord(x, 'lon'))
     df_map_resumo['Estado'] = df_map_resumo['Unidade'].apply(lambda x: buscar_coord(x, 'estado') or 'Outros')
 
-    # Remove unidades presenciais que porventura ficaram sem coordenadas cadastradas
     df_map_resumo = df_map_resumo.dropna(subset=['lat', 'lon'])
 else:
     df_map_resumo = pd.DataFrame(columns=['Unidade', 'Total_Disponibilidades', 'Professores_Unicos', 'lat', 'lon', 'Estado'])
@@ -96,11 +94,11 @@ if busca_mapa and busca_mapa.strip() != "":
     mask = df_tabela_mapa.astype(str).apply(lambda x: x.str.contains(busca_mapa, case=False, na=False)).any(axis=1)
     df_tabela_mapa = df_tabela_mapa[mask]
 
-# Exibição do Mapa Interativo com Hover (Plotly Scatter Mapbox)
+# Exibição do Mapa Interativo usando Scatter Geo (100% estável no Streamlit Cloud sem precisar de token Mapbox)
 if not df_tabela_mapa.empty:
     st.subheader("📍 Mapa Interativo dos Campi (Passe o mouse para ver os dados)")
     
-    fig_mapa = px.scatter_mapbox(
+    fig_mapa = px.scatter_geo(
         df_tabela_mapa,
         lat="lat",
         lon="lon",
@@ -114,13 +112,22 @@ if not df_tabela_mapa.empty:
             "Professores_Unicos": True,
             "Estado": True
         },
-        zoom=5,
+        projection="mercator",
         height=500,
         color_discrete_sequence=['#C8102E', '#E63946', '#8B0000', '#5C0601']
     )
     
+    fig_mapa.update_geos(
+        fitbounds="locations",
+        visible=True,
+        resolution=50,
+        showcountries=True,
+        countrycolor="white",
+        showsubunits=True,
+        subunitcolor="#ddd"
+    )
+    
     fig_mapa.update_layout(
-        mapbox_style="open-street-map",
         margin=dict(l=0, r=0, t=0, b=0),
         paper_bgcolor='rgba(0,0,0,0)',
         plot_bgcolor='rgba(0,0,0,0)'
